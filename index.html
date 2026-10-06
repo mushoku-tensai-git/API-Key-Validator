@@ -1,1 +1,1324 @@
+<!DOCTYPE html>
+<html lang="mr" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Key Validator & Inspector</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    .custom-glow {
+      box-shadow: 0 0 35px -5px rgba(99, 102, 241, 0.15);
+    }
+  </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-indigo-500 selection:text-white flex flex-col justify-between">
+
+  <!-- Notification Toast Container -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Custom Confirmation Modal (Never using alert/confirm) -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl">
+      <div class="flex items-center gap-3 mb-4 text-amber-400">
+        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+        <h3 id="modal-title" class="text-lg font-bold text-white">खात्री करा</h3>
+      </div>
+      <p id="modal-message" class="text-sm text-slate-300 mb-6">तुम्हाला नक्की ही क्रिया करायची आहे का?</p>
+      <div class="flex justify-end gap-3">
+        <button id="modal-btn-cancel" class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition">रद्द करा (Cancel)</button>
+        <button id="modal-btn-confirm" class="px-4 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-xl transition shadow-lg shadow-rose-900/30">होय, हटवा (Confirm)</button>
+      </div>
+    </div>
+  </div>
+
+  <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold text-white tracking-tight">KeyVerify Pro</h1>
+            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">API Validator</span>
+          </div>
+          <p class="text-xs text-slate-400 hidden sm:block">API की चाचपणी, रेट लिमिट तपासणी आणि सर्व्हर त्रुटी विश्लेषक</p>
+        </div>
+      </div>
+
+      <!-- Quick Actions / Badges -->
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-2 text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-3 py-1.5 rounded-xl">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>100% क्लायंट-साइड सुरक्षित (No Server Logging)</span>
+        </div>
+        <button id="open-history-btn" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-xs font-medium text-slate-200 transition">
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span>इतिहास (History)</span>
+          <span id="history-counter-badge" class="px-1.5 py-0.2 bg-slate-700 text-slate-300 rounded-full text-[10px] font-bold">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1">
+    
+    <!-- Provider Quick Selector -->
+    <div class="mb-6">
+      <div class="flex items-center justify-between mb-3">
+        <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          १. API प्रोव्हायडर निवडा (Select API Provider)
+        </label>
+        <span class="text-xs text-slate-500">किंवा स्वतःचा Custom Endpoint वापरा</span>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5" id="providers-container">
+        <!-- Buttons injected dynamically -->
+      </div>
+    </div>
+
+    <!-- Main Grid: Input Form (Left) & Diagnostics Result (Right) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      
+      <section class="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl relative backdrop-blur-sm">
+        
+        <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-800/80">
+          <div class="flex items-center gap-2.5">
+            <span id="selected-provider-icon" class="text-2xl">🤖</span>
+            <div>
+              <h2 id="selected-provider-title" class="font-bold text-white text-base">Google Gemini AI</h2>
+              <p id="selected-provider-subtitle" class="text-xs text-slate-400">Generative Language API</p>
+            </div>
+          </div>
+          <a id="provider-doc-link" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 underline underline-offset-4">
+            <span>की मिळवा (Get Key)</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          </a>
+        </div>
+
+        <form id="api-test-form" class="space-y-4" onsubmit="event.preventDefault(); handleValidateKey();">
+          
+          <!-- API Key Input -->
+          <div>
+            <div class="flex justify-between items-center mb-1.5">
+              <label for="api-key-input" class="text-xs font-semibold text-slate-300">
+                तुमची API Key प्रविष्ट करा <span class="text-rose-400">*</span>
+              </label>
+              <button type="button" id="toggle-key-visibility" class="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1">
+                <svg id="eye-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+                <span id="eye-text">दाखवा (Show)</span>
+              </button>
+            </div>
+            <div class="relative">
+              <input 
+                type="password" 
+                id="api-key-input" 
+                placeholder="उदा. AIzaSyD..., sk-proj-..., ghp_..." 
+                autocomplete="off"
+                spellcheck="false"
+                class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-3 text-sm font-mono text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition pr-10"
+              />
+              <button type="button" id="clear-input-btn" class="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300 hidden" title="Clear">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            <p id="key-format-hint" class="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
+              <svg class="w-3 h-3 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span>सामान्यतः 'AIzaSy' ने सुरू होते.</span>
+            </p>
+          </div>
+
+          <!-- Advanced / Custom Endpoint Settings Collapsible -->
+          <div class="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/50">
+            <button 
+              type="button" 
+              id="toggle-custom-params-btn"
+              class="w-full px-3.5 py-2.5 text-xs font-medium text-slate-400 hover:text-slate-200 flex items-center justify-between transition bg-slate-900/40"
+            >
+              <div class="flex items-center gap-2">
+                <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <span>Endpoint आणि विनंती सेटिंग्ज (Endpoint Settings)</span>
+              </div>
+              <svg id="custom-params-arrow" class="w-4 h-4 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+
+            <div id="custom-params-body" class="p-3.5 space-y-3 hidden border-t border-slate-800">
+              <!-- HTTP Method & URL -->
+              <div>
+                <label class="text-[11px] font-medium text-slate-400 block mb-1">चाचणी Endpoint URL</label>
+                <div class="flex gap-2">
+                  <select id="request-method" class="bg-slate-900 border border-slate-700 rounded-lg text-xs font-bold text-white px-2 py-1.5 focus:border-indigo-500 focus:outline-none">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                  </select>
+                  <input 
+                    type="text" 
+                    id="endpoint-url-input" 
+                    class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <!-- Auth Mode -->
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="text-[11px] font-medium text-slate-400 block mb-1">Auth Type</label>
+                  <select id="auth-type-select" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs text-white px-2 py-1.5 focus:border-indigo-500 focus:outline-none">
+                    <option value="query">URL Query Param</option>
+                    <option value="bearer">Header: Bearer Token</option>
+                    <option value="header_custom">Header: Custom Header</option>
+                  </select>
+                </div>
+                <div id="auth-param-name-wrapper">
+                  <label id="auth-param-label" class="text-[11px] font-medium text-slate-400 block mb-1">Parameter / Header Name</label>
+                  <input 
+                    type="text" 
+                    id="auth-param-name" 
+                    value="key" 
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <!-- CORS Bypass Helper -->
+              <div class="pt-1 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <input type="checkbox" id="cors-proxy-toggle" class="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer">
+                  <label for="cors-proxy-toggle" class="text-xs text-slate-300 cursor-pointer">
+                    CORS Proxy वापरा <span class="text-[10px] text-slate-500">(ब्राउझर CORS ब्लॉक झाल्यास)</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Submit Buttons -->
+          <div class="pt-2 flex flex-col gap-2">
+            <button 
+              type="submit" 
+              id="validate-btn" 
+              class="w-full py-3.5 px-4 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 active:scale-[0.99] transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span id="btn-spinner" class="hidden">
+                <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+              </span>
+              <svg id="btn-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+              <span id="btn-label">API Key तपासा (Validate Key)</span>
+            </button>
+
+            <button 
+              type="button" 
+              id="reset-form-btn" 
+              class="w-full py-2 px-3 text-xs text-slate-400 hover:text-slate-200 transition"
+            >
+              रीसेट करा (Clear All)
+            </button>
+          </div>
+        </form>
+
+        <!-- Privacy & Security Notice -->
+        <div class="mt-5 p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2.5">
+          <svg class="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+          <div>
+            <span class="text-slate-200 font-medium">गोपनीयता हमी (Zero Leakage):</span> ही की थेट तुमच्या ब्राउझरमधून अधिकृत API कडे पाठवली जाते. ती कोणत्याही बाह्य सर्व्हरवर किंवा डेटाबेसमध्ये जतन केली जात नाही.
+          </div>
+        </div>
+
+      </section>
+
+      <section class="lg:col-span-7 space-y-4">
+        
+        <!-- Status Card (Initial / Result State) -->
+        <div id="status-card" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden backdrop-blur-sm transition-all duration-300">
+          
+          <!-- Default Empty State -->
+          <div id="status-empty-state" class="text-center py-12 px-4">
+            <div class="w-16 h-16 rounded-2xl bg-slate-800/80 border border-slate-700/60 mx-auto flex items-center justify-center text-slate-400 mb-4">
+              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <h3 class="text-base font-bold text-white mb-1">API Key चाचणीसाठी तयार आहे</h3>
+            <p class="text-xs text-slate-400 max-w-sm mx-auto">
+              डाव्या बाजूला तुमची API Key टाका आणि "Validate Key" बटण दाबा. स्टेटस कोड (200, 401, 429, 500), लेटन्सी आणि तपशील येथे दिसतील.
+            </p>
+          </div>
+
+          <!-- Active Loading State -->
+          <div id="status-loading-state" class="text-center py-12 px-4 hidden">
+            <div class="relative w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <div class="absolute inset-0 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin"></div>
+              <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+            </div>
+            <h3 class="text-base font-bold text-white mb-1">API कडे विनंती पाठवत आहे...</h3>
+            <p class="text-xs text-indigo-300/80 animate-pulse font-mono">Connecting to endpoint & measuring response time</p>
+          </div>
+
+          <!-- Result Content Container -->
+          <div id="status-result-content" class="hidden space-y-5">
+            
+            <!-- Result Banner -->
+            <div id="result-banner" class="rounded-xl p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div id="status-icon-box" class="w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0">
+                  <!-- Injected Icon -->
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span id="status-code-badge" class="font-mono text-xs font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                      200 OK
+                    </span>
+                    <span id="status-latency-badge" class="text-xs text-slate-400 font-mono flex items-center gap-1">
+                      <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      <span id="latency-val">120 ms</span>
+                    </span>
+                  </div>
+                  <h3 id="status-title-text" class="text-base font-bold text-white mt-1">वैध API Key (Valid & Active)</h3>
+                </div>
+              </div>
+
+              <!-- Re-test action -->
+              <button onclick="handleValidateKey()" class="self-start sm:self-auto px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition flex items-center gap-1.5 border border-slate-700">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                <span>पुन्हा चाचणी घ्या (Re-check)</span>
+              </button>
+            </div>
+
+            <!-- Marathi Diagnostic Explanation Card -->
+            <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                विश्लेषण आणि उपाय (Diagnostic Explanation)
+              </h4>
+              <p id="diagnostic-marathi-explanation" class="text-sm text-slate-200 leading-relaxed">
+                <!-- Marathi dynamic text -->
+              </p>
+              <div id="diagnostic-recommendation-box" class="mt-3 p-3 rounded-lg bg-indigo-950/30 border border-indigo-800/40 text-xs text-indigo-200 flex items-start gap-2">
+                <span class="font-bold text-indigo-400">💡 टीप:</span>
+                <span id="diagnostic-recommendation-text"></span>
+              </div>
+            </div>
+
+            <!-- Rate Limit & Quota Headers Overview -->
+            <div id="ratelimit-section" class="bg-slate-950/60 border border-slate-800 rounded-xl p-4">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+                <span class="flex items-center gap-1.5">
+                  <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  रेट लिमिट माहिती (Rate Limit Metrics)
+                </span>
+                <span id="ratelimit-detected-badge" class="text-[10px] px-2 py-0.5 rounded font-normal bg-slate-800 text-slate-400">Headers Read</span>
+              </h4>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs font-mono">
+                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                  <div class="text-[10px] text-slate-500 uppercase font-sans">Remaining Calls</div>
+                  <div id="rate-remaining" class="text-sm font-bold text-slate-200 mt-0.5">N/A</div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                  <div class="text-[10px] text-slate-500 uppercase font-sans">Total Limit</div>
+                  <div id="rate-limit" class="text-sm font-bold text-slate-200 mt-0.5">N/A</div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 col-span-2 sm:col-span-1">
+                  <div class="text-[10px] text-slate-500 uppercase font-sans">Reset Time / Retry</div>
+                  <div id="rate-reset" class="text-sm font-bold text-slate-200 mt-0.5">N/A</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Response Inspector Tabs -->
+            <div class="border border-slate-800 rounded-xl overflow-hidden bg-slate-950">
+              <div class="flex items-center justify-between border-b border-slate-800 px-3 bg-slate-900/60">
+                <div class="flex gap-1">
+                  <button id="tab-btn-response" onclick="switchInspectorTab('response')" class="px-3 py-2 text-xs font-medium border-b-2 border-indigo-500 text-indigo-400 transition">
+                    सर्व्हर Response (JSON)
+                  </button>
+                  <button id="tab-btn-headers" onclick="switchInspectorTab('headers')" class="px-3 py-2 text-xs font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition">
+                    HTTP Headers
+                  </button>
+                </div>
+                <button onclick="copyCurrentTabContent()" class="text-xs text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                  <span>कॉपी (Copy)</span>
+                </button>
+              </div>
+
+              <!-- Tab 1: Response Body -->
+              <div id="inspector-tab-response" class="p-3">
+                <pre id="response-body-pre" class="font-mono text-xs text-slate-300 overflow-x-auto max-h-72 p-2 bg-slate-900/80 rounded-lg selection:bg-indigo-900 leading-relaxed"></pre>
+              </div>
+
+              <!-- Tab 2: Response Headers -->
+              <div id="inspector-tab-headers" class="p-3 hidden">
+                <div class="overflow-x-auto max-h-72">
+                  <table class="w-full text-left text-xs font-mono">
+                    <thead>
+                      <tr class="text-slate-500 border-b border-slate-800">
+                        <th class="py-1.5 px-2">Header Name</th>
+                        <th class="py-1.5 px-2">Header Value</th>
+                      </tr>
+                    </thead>
+                    <tbody id="response-headers-tbody" class="divide-y divide-slate-800/60 text-slate-300">
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Quick Reference Guide for API Status Codes -->
+        <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 text-xs text-slate-400">
+          <div class="font-bold text-slate-300 mb-2 flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>महत्त्वाचे API स्टेटस कोड (Quick Status Reference):</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+            <div class="p-2 rounded bg-slate-950/60 border border-slate-800/60">
+              <span class="text-emerald-400 font-bold font-mono">200 OK:</span> API Key चालू आहे आणि विनंती यशस्वी झाली.
+            </div>
+            <div class="p-2 rounded bg-slate-950/60 border border-slate-800/60">
+              <span class="text-rose-400 font-bold font-mono">401 Unauthorized:</span> अवैध, खोटी किंवा कालबाह्य (expired) API Key.
+            </div>
+            <div class="p-2 rounded bg-slate-950/60 border border-slate-800/60">
+              <span class="text-amber-400 font-bold font-mono">403 Forbidden:</span> परवानगी नाही (Billing, Scope किंवा देश निर्बंध).
+            </div>
+            <div class="p-2 rounded bg-slate-950/60 border border-slate-800/60">
+              <span class="text-purple-400 font-bold font-mono">429 Rate Limit:</span> विनंत्यांची मर्यादा ओलांडली किंवा मोफत कोटा संपला.
+            </div>
+            <div class="p-2 rounded bg-slate-950/60 border border-slate-800/60">
+              <span class="text-rose-500 font-bold font-mono">500/503 Error:</span> सर्व्हर डाऊन किंवा API कंपनीकडील तात्पुरता बिघाड.
+            </div>
+            <div class="p-2 rounded bg-slate-950/60 border border-slate-800/60">
+              <span class="text-blue-400 font-bold font-mono">CORS / Network:</span> ब्राउझर सुरक्षा निर्बंध (Proxy चेकबॉक्स वापरा).
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+
+    <!-- History Drawer / Modal -->
+    <div id="history-modal" class="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm hidden items-center justify-end p-0">
+      <div class="bg-slate-900 border-l border-slate-800 w-full max-w-md h-full flex flex-col p-6 shadow-2xl overflow-hidden animate-slide-left">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <h3 class="font-bold text-white text-base">चाचणी इतिहास (Validation Log)</h3>
+          </div>
+          <button id="close-history-btn" class="p-1 rounded-lg text-slate-400 hover:text-white bg-slate-800 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="py-3 flex items-center justify-between text-xs text-slate-400 border-b border-slate-800/60">
+          <span>सुरक्षेसाठी की चे केवळ शेवटचे अक्षरे दिसतात.</span>
+          <button id="clear-all-history-btn" class="text-rose-400 hover:text-rose-300 font-medium">इतिहास पुसा (Clear)</button>
+        </div>
+
+        <!-- History List Scrollable -->
+        <div id="history-list" class="flex-1 overflow-y-auto py-3 space-y-2.5">
+          <!-- Injected via JS -->
+        </div>
+
+        <div class="pt-4 border-t border-slate-800">
+          <button id="history-done-btn" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition">
+            बंद करा (Close)
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>KeyVerify Pro &bull; सुरक्षित आणि वेगवान API Key विश्लेषक साधन</p>
+      <p class="text-[11px] text-slate-600">Client-Side Diagnostic Engine &bull; Zero Server Side Storage</p>
+    </div>
+  </footer>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // Provider Presets Definition
+    const PROVIDERS = {
+      gemini: {
+        id: 'gemini',
+        name: 'Google Gemini',
+        category: 'Generative AI',
+        icon: '✨',
+        docUrl: 'https://aistudio.google.com/app/apikey',
+        formatHint: "सामान्यतः 'AIzaSy' ने सुरू होते (Google AI Studio Key).",
+        method: 'GET',
+        endpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
+        authType: 'query', // key is passed in URL ?key=
+        authParamName: 'key',
+        supportsCors: true
+      },
+      openai: {
+        id: 'openai',
+        name: 'OpenAI (GPT)',
+        category: 'Language Models',
+        icon: '🧠',
+        docUrl: 'https://platform.openai.com/api-keys',
+        formatHint: "सामान्यतः 'sk-...' ने सुरू होते.",
+        method: 'GET',
+        endpoint: 'https://api.openai.com/v1/models',
+        authType: 'bearer',
+        authParamName: 'Authorization',
+        supportsCors: true
+      },
+      github: {
+        id: 'github',
+        name: 'GitHub Token',
+        category: 'Developer Platform',
+        icon: '🐙',
+        docUrl: 'https://github.com/settings/tokens',
+        formatHint: "उदा. 'ghp_...', 'github_pat_...' टोकन.",
+        method: 'GET',
+        endpoint: 'https://api.github.com/user',
+        authType: 'bearer',
+        authParamName: 'Authorization',
+        supportsCors: true
+      },
+      huggingface: {
+        id: 'huggingface',
+        name: 'Hugging Face',
+        category: 'ML Models & Hub',
+        icon: '🤗',
+        docUrl: 'https://huggingface.co/settings/tokens',
+        formatHint: "सामान्यतः 'hf_...' ने सुरू होते.",
+        method: 'GET',
+        endpoint: 'https://huggingface.co/api/whoami-v2',
+        authType: 'bearer',
+        authParamName: 'Authorization',
+        supportsCors: true
+      },
+      openweather: {
+        id: 'openweather',
+        name: 'OpenWeather',
+        category: 'Weather Service',
+        icon: '☀️',
+        docUrl: 'https://home.openweathermap.org/api_keys',
+        formatHint: '३२-अंकी हेक्स स्ट्रिंग (Hex string key).',
+        method: 'GET',
+        endpoint: 'https://api.openweathermap.org/data/2.5/weather?q=London',
+        authType: 'query',
+        authParamName: 'appid',
+        supportsCors: true
+      },
+      custom: {
+        id: 'custom',
+        name: 'Custom Endpoint',
+        category: 'Any REST API',
+        icon: '⚙️️',
+        docUrl: '#',
+        formatHint: 'कोणतीही कस्टम की किंवा टोकन टाका.',
+        method: 'GET',
+        endpoint: 'https://httpbin.org/get',
+        authType: 'bearer',
+        authParamName: 'Authorization',
+        supportsCors: false
+      }
+    };
+
+    // State Variables
+    let currentProviderId = 'gemini';
+    let isKeyVisible = false;
+    let currentRawResponse = '';
+    let currentHeadersString = '';
+    let activeInspectorTab = 'response';
+
+    // Helper: Toast Notifications (No alert)
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-emerald-900/90 border-emerald-700 text-emerald-200',
+        error: 'bg-rose-900/90 border-rose-700 text-rose-200',
+        warning: 'bg-amber-900/90 border-amber-700 text-amber-200',
+        info: 'bg-slate-800/90 border-slate-700 text-slate-200'
+      };
+
+      toast.className = `px-4 py-3 rounded-xl border shadow-xl text-xs font-medium backdrop-blur-md transition-all duration-300 transform translate-x-full pointer-events-auto flex items-center gap-2 max-w-sm ${colors[type] || colors.info}`;
+      toast.innerHTML = `
+        <span>${message}</span>
+      `;
+
+      container.appendChild(toast);
+      // Animate in
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-x-full');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-x-full');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // Helper: Safe Copy to Clipboard (using execCommand for iframe compatibility)
+    function copyTextToClipboard(text, successMsg = 'क्लिपबोर्डवर कॉपी झाले!') {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.top = '0';
+        textarea.style.left = '0';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textarea);
+
+        if (successful) {
+          showToast(successMsg, 'success');
+        } else {
+          showToast('कॉपी करणे शक्य झाले नाही', 'error');
+        }
+      } catch (err) {
+        showToast('कॉपी त्रुटी आली', 'error');
+      }
+    }
+
+    // Custom Modal Trigger
+    function openConfirmModal(title, message, onConfirm) {
+      const modal = document.getElementById('confirm-modal');
+      const titleEl = document.getElementById('modal-title');
+      const msgEl = document.getElementById('modal-message');
+      const cancelBtn = document.getElementById('modal-btn-cancel');
+      const confirmBtn = document.getElementById('modal-btn-confirm');
+
+      titleEl.innerText = title;
+      msgEl.innerText = message;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      const cleanup = () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        confirmBtn.onclick = null;
+        cancelBtn.onclick = null;
+      };
+
+      cancelBtn.onclick = cleanup;
+      confirmBtn.onclick = () => {
+        cleanup();
+        onConfirm();
+      };
+    }
+
+    // Render Provider Buttons
+    function renderProviderButtons() {
+      const container = document.getElementById('providers-container');
+      container.innerHTML = '';
+
+      Object.values(PROVIDERS).forEach(p => {
+        const isSelected = p.id === currentProviderId;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.onclick = () => selectProvider(p.id);
+        btn.className = `p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between ${
+          isSelected 
+            ? 'bg-indigo-600/20 border-indigo-500 text-white shadow-lg shadow-indigo-500/10' 
+            : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white'
+        }`;
+
+        btn.innerHTML = `
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-xl">${p.icon}</span>
+            ${isSelected ? '<span class="w-2 h-2 rounded-full bg-indigo-400"></span>' : ''}
+          </div>
+          <div>
+            <div class="font-bold text-xs tracking-tight truncate">${p.name}</div>
+            <div class="text-[10px] text-slate-500 truncate">${p.category}</div>
+          </div>
+        `;
+        container.appendChild(btn);
+      });
+    }
+
+    // Select Provider
+    function selectProvider(providerId) {
+      currentProviderId = providerId;
+      const p = PROVIDERS[providerId];
+
+      renderProviderButtons();
+
+      // Update Form Headers
+      document.getElementById('selected-provider-icon').innerText = p.icon;
+      document.getElementById('selected-provider-title').innerText = p.name;
+      document.getElementById('selected-provider-subtitle').innerText = p.category;
+      
+      const docLink = document.getElementById('provider-doc-link');
+      if (p.docUrl && p.docUrl !== '#') {
+        docLink.href = p.docUrl;
+        docLink.classList.remove('hidden');
+      } else {
+        docLink.classList.add('hidden');
+      }
+
+      document.getElementById('key-format-hint').innerHTML = `
+        <svg class="w-3 h-3 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>${p.formatHint}</span>
+      `;
+
+      // Update Endpoint Settings inputs
+      document.getElementById('endpoint-url-input').value = p.endpoint;
+      document.getElementById('request-method').value = p.method;
+      document.getElementById('auth-type-select').value = p.authType;
+      document.getElementById('auth-param-name').value = p.authParamName;
+
+      // Expand custom settings automatically if 'custom' is picked
+      const customParamsBody = document.getElementById('custom-params-body');
+      const customParamsArrow = document.getElementById('custom-params-arrow');
+      if (providerId === 'custom') {
+        customParamsBody.classList.remove('hidden');
+        customParamsArrow.classList.add('rotate-180');
+      }
+
+      updateAuthInputLabels();
+    }
+
+    // Adjust Auth Param labels dynamically
+    function updateAuthInputLabels() {
+      const authType = document.getElementById('auth-type-select').value;
+      const paramNameWrapper = document.getElementById('auth-param-name-wrapper');
+      const paramLabel = document.getElementById('auth-param-label');
+      const paramInput = document.getElementById('auth-param-name');
+
+      if (authType === 'query') {
+        paramNameWrapper.style.display = 'block';
+        paramLabel.innerText = 'Query Param Name (उदा. key, api_key)';
+      } else if (authType === 'bearer') {
+        paramNameWrapper.style.display = 'none';
+      } else if (authType === 'header_custom') {
+        paramNameWrapper.style.display = 'block';
+        paramLabel.innerText = 'Custom Header Name (उदा. x-api-key)';
+      }
+    }
+
+    // Main Validation Function
+    async function handleValidateKey() {
+      const apiKeyInput = document.getElementById('api-key-input');
+      const apiKey = apiKeyInput.value.trim();
+
+      if (!apiKey) {
+        showToast('कृपया तपासण्यासाठी API Key प्रविष्ट करा!', 'warning');
+        apiKeyInput.focus();
+        return;
+      }
+
+      const provider = PROVIDERS[currentProviderId];
+      let endpoint = document.getElementById('endpoint-url-input').value.trim();
+      const method = document.getElementById('request-method').value;
+      const authType = document.getElementById('auth-type-select').value;
+      const authParamName = document.getElementById('auth-param-name').value.trim() || 'key';
+      const useProxy = document.getElementById('cors-proxy-toggle').checked;
+
+      // Construct Request URL & Headers
+      const headers = {
+        'Accept': 'application/json'
+      };
+
+      let finalUrl = endpoint;
+
+      if (authType === 'query') {
+        const separator = finalUrl.includes('?') ? '&' : '?';
+        finalUrl = `${finalUrl}${separator}${encodeURIComponent(authParamName)}=${encodeURIComponent(apiKey)}`;
+      } else if (authType === 'bearer') {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      } else if (authType === 'header_custom') {
+        headers[authParamName] = apiKey;
+      }
+
+      // If user toggled CORS Proxy helper
+      if (useProxy) {
+        finalUrl = `https://corsproxy.io/?url=${encodeURIComponent(finalUrl)}`;
+      }
+
+      // Toggle UI States
+      setLoadingState(true);
+      const startTime = performance.now();
+
+      try {
+        const fetchOptions = {
+          method: method,
+          headers: headers
+        };
+
+        const response = await fetch(finalUrl, fetchOptions);
+        const endTime = performance.now();
+        const latencyMs = Math.round(endTime - startTime);
+
+        // Extract Response Headers for inspection
+        const headerEntries = [];
+        response.headers.forEach((val, key) => {
+          headerEntries.push({ key, val });
+        });
+
+        // Extract Response Body
+        let bodyText = '';
+        let parsedJson = null;
+        try {
+          bodyText = await response.text();
+          parsedJson = JSON.parse(bodyText);
+        } catch (e) {
+          // not valid json, keep raw text
+        }
+
+        // Process HTTP Status
+        processValidationResult({
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok,
+          latency: latencyMs,
+          headers: headerEntries,
+          body: parsedJson ? JSON.stringify(parsedJson, null, 2) : (bodyText || '(Empty Response)'),
+          rawJson: parsedJson,
+          apiKey: apiKey,
+          providerName: provider.name
+        });
+
+      } catch (networkError) {
+        const endTime = performance.now();
+        const latencyMs = Math.round(endTime - startTime);
+
+        // Network or CORS failure
+        processNetworkFailureResult(networkError, latencyMs, apiKey, provider.name);
+      } finally {
+        setLoadingState(false);
+      }
+    }
+
+    // Set Loading Indicator
+    function setLoadingState(isLoading) {
+      const validateBtn = document.getElementById('validate-btn');
+      const spinner = document.getElementById('btn-spinner');
+      const btnIcon = document.getElementById('btn-icon');
+      const btnLabel = document.getElementById('btn-label');
+
+      const emptyState = document.getElementById('status-empty-state');
+      const loadingState = document.getElementById('status-loading-state');
+      const resultContent = document.getElementById('status-result-content');
+
+      if (isLoading) {
+        validateBtn.disabled = true;
+        validateBtn.classList.add('opacity-80', 'cursor-not-allowed');
+        spinner.classList.remove('hidden');
+        btnIcon.classList.add('hidden');
+        btnLabel.innerText = 'तपासणी चालू आहे...';
+
+        emptyState.classList.add('hidden');
+        resultContent.classList.add('hidden');
+        loadingState.classList.remove('hidden');
+      } else {
+        validateBtn.disabled = false;
+        validateBtn.classList.remove('opacity-80', 'cursor-not-allowed');
+        spinner.classList.add('hidden');
+        btnIcon.classList.remove('hidden');
+        btnLabel.innerText = 'API Key तपासा (Validate Key)';
+
+        loadingState.classList.add('hidden');
+      }
+    }
+
+    // Process Detailed Status Code Breakdown
+    function processValidationResult(result) {
+      const { status, latency, headers, body, rawJson, apiKey, providerName } = result;
+      const resultContent = document.getElementById('status-result-content');
+      resultContent.classList.remove('hidden');
+
+      // Update Latency
+      document.getElementById('latency-val').innerText = `${latency} ms`;
+
+      // Update Inspector Body & Headers
+      currentRawResponse = body;
+      document.getElementById('response-body-pre').textContent = body;
+      
+      const tbody = document.getElementById('response-headers-tbody');
+      tbody.innerHTML = '';
+      currentHeadersString = headers.map(h => `${h.key}: ${h.val}`).join('\n');
+
+      headers.forEach(h => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="py-1 px-2 text-indigo-400 font-semibold align-top break-all">${escapeHtml(h.key)}</td>
+          <td class="py-1 px-2 text-slate-300 align-top break-all">${escapeHtml(h.val)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Extract Rate Limits from Headers
+      analyzeRateLimitHeaders(headers);
+
+      // Determine Visual Theme & Marathi Diagnostics
+      let statusCategory = 'unknown';
+      let title = '';
+      let badgeClass = '';
+      let bannerBg = '';
+      let iconSvg = '';
+      let marathiExplanation = '';
+      let recommendation = '';
+
+      if (status >= 200 && status < 300) {
+        statusCategory = 'valid';
+        title = 'वैध व कार्यरत API Key (Valid & Active)';
+        badgeClass = 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+        bannerBg = 'bg-emerald-950/40 border-emerald-800/60';
+        iconSvg = `<div class="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-600/30">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+        </div>`;
+        marathiExplanation = `अभिनंदन! तुमची API Key पूर्णपणे वैध आहे. API सर्व्हरने HTTP ${status} सह विनंती यशस्वीरीत्या स्वीकारली आहे. ही की तुमच्या ऍप्लिकेशन्स किंवा सॉफ्टवेअरमध्ये वापरण्यासाठी पूर्णपणे सुरक्षित आहे.`;
+        recommendation = 'तुम्ही ही की तुमच्या प्रोजेक्टमध्ये बिनधास्त वापरू शकता. सुरक्षेसाठी ही की कधीही पब्लिक GitHub रेपोमध्ये कमिट करू नका.';
+
+      } else if (status === 401) {
+        statusCategory = 'invalid';
+        title = 'अवैध / कालबाह्य API Key (Unauthorized)';
+        badgeClass = 'bg-rose-500/20 text-rose-300 border border-rose-500/40';
+        bannerBg = 'bg-rose-950/40 border-rose-800/60';
+        iconSvg = `<div class="w-12 h-12 rounded-xl bg-rose-600 flex items-center justify-center text-white shadow-lg shadow-rose-600/30">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+        </div>`;
+        marathiExplanation = `ही API Key अवैध (Invalid), चुकीची किंवा Expire झालेली आहे. सर्व्हरने तुमचे प्रमाणीकरण (Authentication) नाकारले आहे.`;
+        recommendation = 'कृपया तुमच्या API डॅशबोर्डवर (उदा. Google AI Studio, OpenAI किंवा GitHub) जाऊन नवीन की तयार करा आणि ती कॉपी करून पुन्हा पेस्ट करा.';
+
+      } else if (status === 403) {
+        statusCategory = 'forbidden';
+        title = 'परवानगी नाकारली (Forbidden / Scope Error)';
+        badgeClass = 'bg-amber-500/20 text-amber-300 border border-amber-500/40';
+        bannerBg = 'bg-amber-950/40 border-amber-800/60';
+        iconSvg = `<div class="w-12 h-12 rounded-xl bg-amber-600 flex items-center justify-center text-white shadow-lg shadow-amber-600/30">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        </div>`;
+        marathiExplanation = `की वैध असण्याची शक्यता आहे, परंतु या एंडपॉईंटवर किंवा मॉडेलवर ऍक्सेस करण्याची परवानगी नाही (उदा. Billing सक्रिय नसणे, Scopes नसणे किंवा IP निर्बंध).`;
+        recommendation = 'तुमच्या API खात्याचे बिलिंग (Payment method) किंवा टोकनचे Scopes/Permissions तपासा.';
+
+      } else if (status === 429) {
+        statusCategory = 'ratelimit';
+        title = 'रेट लिमिट मर्यादा संपली (Too Many Requests / Quota Exceeded)';
+        badgeClass = 'bg-purple-500/20 text-purple-300 border border-purple-500/40';
+        bannerBg = 'bg-purple-950/40 border-purple-800/60';
+        iconSvg = `<div class="w-12 h-12 rounded-xl bg-purple-600 flex items-center justify-center text-white shadow-lg shadow-purple-600/30">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>`;
+        marathiExplanation = `तुम्ही प्रति मिनिट/तास दिलेल्या मर्यादेपेक्षा जास्त विनंत्या केल्या आहेत किंवा तुमच्या खात्याचा मोफत क्रेडिट कोटा संपला आहे.`;
+        recommendation = 'काही मिनिटे थांबा किंवा तुमच्या API खात्याचा Quota / Subscription प्लॅन अपग्रेड करा.';
+
+      } else if (status >= 500) {
+        statusCategory = 'server_error';
+        title = `सर्व्हर त्रुटी (Server-Side Error: ${status})`;
+        badgeClass = 'bg-rose-500/20 text-rose-300 border border-rose-500/40';
+        bannerBg = 'bg-rose-950/40 border-rose-800/60';
+        iconSvg = `<div class="w-12 h-12 rounded-xl bg-rose-700 flex items-center justify-center text-white shadow-lg shadow-rose-700/30">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>`;
+        marathiExplanation = `API प्रोव्हायडरच्या स्वतःच्या सर्व्हरवर समस्या (Internal Server Error) आली आहे. यामध्ये तुमच्या की चा दोष नाही. सर्व्हर डाऊन असू शकतो.`;
+        recommendation = 'प्रोव्हायडरचे स्टेटस पेज (उदा. status.openai.com) तपासा आणि थोड्या वेळाने पुन्हा प्रयत्न करा.';
+
+      } else {
+        statusCategory = 'other';
+        title = `अनपेक्षित स्थिती कोड (${status})`;
+        badgeClass = 'bg-slate-500/20 text-slate-300 border border-slate-500/40';
+        bannerBg = 'bg-slate-900 border-slate-800';
+        iconSvg = `<div class="w-12 h-12 rounded-xl bg-slate-700 flex items-center justify-center text-white">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>`;
+        marathiExplanation = `सर्व्हरने HTTP ${status} उत्तर दिले आहे. खालील Response JSON तपासून पहा.`;
+        recommendation = 'विनंतीचे पॅरामीटर्स आणि URL बरोबर असल्याची खात्री करा.';
+      }
+
+      // Apply UI elements
+      const resultBanner = document.getElementById('result-banner');
+      resultBanner.className = `rounded-xl p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${bannerBg}`;
+      
+      const badge = document.getElementById('status-code-badge');
+      badge.className = `font-mono text-xs font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider ${badgeClass}`;
+      badge.innerText = `${status} ${result.statusText || ''}`;
+
+      document.getElementById('status-title-text').innerText = title;
+      document.getElementById('status-icon-box').innerHTML = iconSvg;
+      document.getElementById('diagnostic-marathi-explanation').innerText = marathiExplanation;
+      document.getElementById('diagnostic-recommendation-text').innerText = recommendation;
+
+      // Save to History Log
+      saveToHistory({
+        provider: providerName,
+        status: status,
+        statusCategory: statusCategory,
+        latency: latency,
+        maskedKey: maskKey(apiKey),
+        timestamp: new Date().toLocaleTimeString('mr-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      });
+    }
+
+    // Process Network / CORS Failure
+    function processNetworkFailureResult(error, latency, apiKey, providerName) {
+      const resultContent = document.getElementById('status-result-content');
+      resultContent.classList.remove('hidden');
+
+      document.getElementById('latency-val').innerText = `${latency} ms`;
+      document.getElementById('response-body-pre').textContent = `Error: ${error.message}\n\nNote: If this API restricts browser access, Cross-Origin Resource Sharing (CORS) preflight may fail.`;
+      
+      const tbody = document.getElementById('response-headers-tbody');
+      tbody.innerHTML = '<tr><td colspan="2" class="py-2 text-slate-500 text-center">ब्राउझर नेटवर्क त्रुटीमुळे Headers उपलब्ध नाहीत.</td></tr>';
+
+      document.getElementById('rate-remaining').innerText = 'N/A';
+      document.getElementById('rate-limit').innerText = 'N/A';
+      document.getElementById('rate-reset').innerText = 'N/A';
+
+      const resultBanner = document.getElementById('result-banner');
+      resultBanner.className = 'rounded-xl p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-indigo-950/40 border-indigo-800/60';
+      
+      const badge = document.getElementById('status-code-badge');
+      badge.className = 'font-mono text-xs font-bold px-2 py-0.5 rounded-md uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/40';
+      badge.innerText = 'CORS / Network Error';
+
+      document.getElementById('status-title-text').innerText = 'ब्राउझर CORS किंवा नेटवर्क मर्यादा';
+      document.getElementById('status-icon-box').innerHTML = `
+        <div class="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+      `;
+
+      document.getElementById('diagnostic-marathi-explanation').innerText = 
+        'ब्राउझरमधील सुरक्षा नियमांमुळे (CORS Policy) थेट क्लायंटवरून या API ला कॉल करणे ब्लॉक झाले आहे किंवा इंटरनेट जोडणी तुटलेली आहे. काही APIs (उदा. Anthropic किंवा खाजगी सर्व्हर) थेट वेब ब्राउझरमधून कॉलिंगला परवानगी देत नाहीत.';
+
+      document.getElementById('diagnostic-recommendation-text').innerText = 
+        'डाव्या बाजूला "Endpoint आणि विनंती सेटिंग्ज" उघडून "CORS Proxy वापरा" हा चेकबॉक्स ऑन करा आणि पुन्हा चाचणी घ्या.';
+
+      saveToHistory({
+        provider: providerName,
+        status: 'CORS/Net',
+        statusCategory: 'cors',
+        latency: latency,
+        maskedKey: maskKey(apiKey),
+        timestamp: new Date().toLocaleTimeString('mr-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      });
+    }
+
+    // Rate Limit Header Extractor
+    function analyzeRateLimitHeaders(headers) {
+      let remaining = 'N/A';
+      let limit = 'N/A';
+      let reset = 'N/A';
+
+      headers.forEach(({ key, val }) => {
+        const k = key.toLowerCase();
+        if (k.includes('ratelimit-remaining') || k === 'x-ratelimit-remaining-requests') remaining = val;
+        if (k.includes('ratelimit-limit') || k === 'x-ratelimit-limit-requests') limit = val;
+        if (k.includes('ratelimit-reset') || k === 'retry-after') reset = val;
+      });
+
+      document.getElementById('rate-remaining').innerText = remaining;
+      document.getElementById('rate-limit').innerText = limit;
+      document.getElementById('rate-reset').innerText = reset;
+
+      const detectedBadge = document.getElementById('ratelimit-detected-badge');
+      if (remaining !== 'N/A' || limit !== 'N/A') {
+        detectedBadge.innerText = 'Metrics Detected';
+        detectedBadge.className = 'text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+      } else {
+        detectedBadge.innerText = 'No Rate Headers';
+        detectedBadge.className = 'text-[10px] px-2 py-0.5 rounded font-normal bg-slate-800 text-slate-400';
+      }
+    }
+
+    // Helper to mask key for privacy
+    function maskKey(key) {
+      if (!key) return '';
+      if (key.length <= 8) return '****' + key.slice(-2);
+      return key.slice(0, 4) + '...' + key.slice(-4);
+    }
+
+    // Escape HTML to prevent injection
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Save item to localStorage
+    function saveToHistory(item) {
+      let history = [];
+      try {
+        const stored = localStorage.getItem('api_validator_history');
+        if (stored) history = JSON.parse(stored);
+      } catch (e) {}
+
+      history.unshift(item);
+      if (history.length > 20) history = history.slice(0, 20); // Keep max 20
+
+      try {
+        localStorage.setItem('api_validator_history', JSON.stringify(history));
+      } catch (e) {}
+
+      updateHistoryCount();
+    }
+
+    // Update History Badge Count
+    function updateHistoryCount() {
+      let count = 0;
+      try {
+        const stored = localStorage.getItem('api_validator_history');
+        if (stored) count = JSON.parse(stored).length;
+      } catch (e) {}
+      document.getElementById('history-counter-badge').innerText = count;
+    }
+
+    // Render History Drawer List
+    function renderHistoryList() {
+      const container = document.getElementById('history-list');
+      container.innerHTML = '';
+
+      let history = [];
+      try {
+        const stored = localStorage.getItem('api_validator_history');
+        if (stored) history = JSON.parse(stored);
+      } catch (e) {}
+
+      if (history.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-10 text-slate-500 text-xs">
+            कोणतीही चाचणी नोंद आढळली नाही.
+          </div>
+        `;
+        return;
+      }
+
+      history.forEach((h, idx) => {
+        const item = document.createElement('div');
+        item.className = 'p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs flex items-center justify-between gap-3';
+        
+        const badgeColors = {
+          valid: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+          invalid: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
+          forbidden: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+          ratelimit: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+          server_error: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
+          cors: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30'
+        };
+
+        const badgeClass = badgeColors[h.statusCategory] || 'bg-slate-800 text-slate-300';
+
+        item.innerHTML = `
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white truncate">${escapeHtml(h.provider)}</span>
+              <span class="font-mono text-[10px] px-1.5 py-0.5 rounded border ${badgeClass}">
+                ${h.status}
+              </span>
+            </div>
+            <div class="text-[11px] font-mono text-slate-400 mt-1 truncate">
+              Key: ${escapeHtml(h.maskedKey)} &bull; ${h.latency}ms
+            </div>
+          </div>
+          <span class="text-[10px] text-slate-500 flex-shrink-0 font-mono">${h.timestamp}</span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    // Switch Inspector Tab
+    function switchInspectorTab(tab) {
+      activeInspectorTab = tab;
+      const tabResponse = document.getElementById('inspector-tab-response');
+      const tabHeaders = document.getElementById('inspector-tab-headers');
+      const btnResponse = document.getElementById('tab-btn-response');
+      const btnHeaders = document.getElementById('tab-btn-headers');
+
+      if (tab === 'response') {
+        tabResponse.classList.remove('hidden');
+        tabHeaders.classList.add('hidden');
+        btnResponse.className = 'px-3 py-2 text-xs font-medium border-b-2 border-indigo-500 text-indigo-400 transition';
+        btnHeaders.className = 'px-3 py-2 text-xs font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition';
+      } else {
+        tabResponse.classList.add('hidden');
+        tabHeaders.classList.remove('hidden');
+        btnHeaders.className = 'px-3 py-2 text-xs font-medium border-b-2 border-indigo-500 text-indigo-400 transition';
+        btnResponse.className = 'px-3 py-2 text-xs font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition';
+      }
+    }
+
+    // Copy Content of Current Active Tab
+    function copyCurrentTabContent() {
+      if (activeInspectorTab === 'response') {
+        if (!currentRawResponse) {
+          showToast('कॉपी करण्यासाठी डेटा नाही', 'warning');
+          return;
+        }
+        copyTextToClipboard(currentRawResponse, 'JSON Response कॉपी केले!');
+      } else {
+        if (!currentHeadersString) {
+          showToast('कॉपी करण्यासाठी Headers नाहीत', 'warning');
+          return;
+        }
+        copyTextToClipboard(currentHeadersString, 'Headers कॉपी केले!');
+      }
+    }
+
+    // Event Listeners setup
+    window.addEventListener('DOMContentLoaded', () => {
+      renderProviderButtons();
+      selectProvider('gemini');
+      updateHistoryCount();
+
+      const apiKeyInput = document.getElementById('api-key-input');
+      const clearBtn = document.getElementById('clear-input-btn');
+      const eyeToggle = document.getElementById('toggle-key-visibility');
+
+      // Key input change
+      apiKeyInput.addEventListener('input', () => {
+        if (apiKeyInput.value.length > 0) {
+          clearBtn.classList.remove('hidden');
+        } else {
+          clearBtn.classList.add('hidden');
+        }
+      });
+
+      // Clear input button
+      clearBtn.addEventListener('click', () => {
+        apiKeyInput.value = '';
+        clearBtn.classList.add('hidden');
+        apiKeyInput.focus();
+      });
+
+      // Toggle show/hide password
+      eyeToggle.addEventListener('click', () => {
+        isKeyVisible = !isKeyVisible;
+        apiKeyInput.type = isKeyVisible ? 'text' : 'password';
+        document.getElementById('eye-text').innerText = isKeyVisible ? 'लपवा (Hide)' : 'दाखवा (Show)';
+      });
+
+      // Toggle custom settings panel
+      const customParamsBtn = document.getElementById('toggle-custom-params-btn');
+      const customParamsBody = document.getElementById('custom-params-body');
+      const customParamsArrow = document.getElementById('custom-params-arrow');
+      customParamsBtn.addEventListener('click', () => {
+        const isHidden = customParamsBody.classList.contains('hidden');
+        if (isHidden) {
+          customParamsBody.classList.remove('hidden');
+          customParamsArrow.classList.add('rotate-180');
+        } else {
+          customParamsBody.classList.add('hidden');
+          customParamsArrow.classList.remove('rotate-180');
+        }
+      });
+
+      // Auth type change listener
+      document.getElementById('auth-type-select').addEventListener('change', updateAuthInputLabels);
+
+      // Reset form
+      document.getElementById('reset-form-btn').addEventListener('click', () => {
+        apiKeyInput.value = '';
+        clearBtn.classList.add('hidden');
+        document.getElementById('status-result-content').classList.add('hidden');
+        document.getElementById('status-empty-state').classList.remove('hidden');
+        showToast('फॉर्म पूर्ववत केला गेला.', 'info');
+      });
+
+      // History Drawer Open / Close
+      const historyModal = document.getElementById('history-modal');
+      document.getElementById('open-history-btn').addEventListener('click', () => {
+        renderHistoryList();
+        historyModal.classList.remove('hidden');
+        historyModal.classList.add('flex');
+      });
+
+      const closeHistory = () => {
+        historyModal.classList.add('hidden');
+        historyModal.classList.remove('flex');
+      };
+
+      document.getElementById('close-history-btn').addEventListener('click', closeHistory);
+      document.getElementById('history-done-btn').addEventListener('click', closeHistory);
+
+      // Clear all history with modal confirmation
+      document.getElementById('clear-all-history-btn').addEventListener('click', () => {
+        openConfirmModal('इतिहास हटवा', 'तुम्हाला सर्व चाचणी इतिहास पूर्णपणे हटवायचा आहे का?', () => {
+          localStorage.removeItem('api_validator_history');
+          renderHistoryList();
+          updateHistoryCount();
+          showToast('सर्व इतिहास हटवला गेला.', 'success');
+        });
+      });
+    });
+  </script>
+</body>
+</html>

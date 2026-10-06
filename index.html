@@ -1,1 +1,1977 @@
+<!DOCTYPE html>
+<html lang="mr" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KeyVerify Pro — Advanced API Key Inspector & Benchmark</title>
 
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Instrument Serif, Inter, Geist Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['"Instrument Serif"', 'Georgia', 'serif'],
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['"Geist Mono"', 'JetBrains Mono', 'ui-monospace', 'monospace'],
+          },
+          colors: {
+            canvas: '#000000',
+            primary: '#fcfdff',
+            'primary-on': '#000000',
+            'surface-light': '#f1f7fe',
+            'surface-card': '#0a0a0c',
+            'surface-elevated': '#101012',
+            'surface-deep': '#06060a',
+            ink: '#fcfdff',
+            body: 'rgba(252, 253, 255, 0.86)',
+            charcoal: 'rgba(252, 253, 255, 0.70)',
+            mute: '#a1a4a5',
+            ash: '#888e90',
+            stone: '#464a4d',
+            'hairline': 'rgba(255, 255, 255, 0.06)',
+            'hairline-strong': 'rgba(255, 255, 255, 0.14)',
+            'divider-soft': 'rgba(255, 255, 255, 0.04)',
+            'accent-orange': '#ff801f',
+            'accent-yellow': '#ffc53d',
+            'accent-blue': '#3b9eff',
+            'accent-green': '#11ff99',
+            'accent-red': '#ff2047',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #000000;
+      color: rgba(252, 253, 255, 0.86);
+      font-family: 'Inter', sans-serif;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .display-editorial {
+      font-family: 'Instrument Serif', Georgia, serif;
+      line-height: 1.0;
+      letter-spacing: -0.035em;
+      font-feature-settings: "ss01", "ss04", "ss11", "liga";
+    }
+
+    .glow-atmospheric {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 1100px;
+      height: 520px;
+      pointer-events: none;
+      z-index: 0;
+      transition: background 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+      background: radial-gradient(ellipse 70% 50% at 50% -10%, rgba(59, 158, 255, 0.12), transparent 70%);
+    }
+
+    .glow-success { background: radial-gradient(ellipse 70% 50% at 50% -10%, rgba(17, 255, 153, 0.16), transparent 70%); }
+    .glow-error { background: radial-gradient(ellipse 70% 50% at 50% -10%, rgba(255, 32, 71, 0.18), transparent 70%); }
+    .glow-warning { background: radial-gradient(ellipse 70% 50% at 50% -10%, rgba(255, 197, 61, 0.15), transparent 70%); }
+    .glow-ratelimit { background: radial-gradient(ellipse 70% 50% at 50% -10%, rgba(255, 128, 31, 0.17), transparent 70%); }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #000000; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.28); }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col justify-between selection:bg-white selection:text-black relative">
+
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Custom Confirmation Dialog -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#0a0a0c] border border-[rgba(255,255,255,0.14)] rounded-[12px] max-w-sm w-full p-6">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-2 h-2 rounded-full bg-[#ffc53d]"></span>
+        <h3 id="modal-title" class="text-sm font-semibold text-[#fcfdff]">खात्री करा</h3>
+      </div>
+      <p id="modal-message" class="text-xs text-[#a1a4a5] mb-6 leading-relaxed">तुम्हाला नक्की ही क्रिया करायची आहे का?</p>
+      <div class="flex justify-end gap-2">
+        <button id="modal-btn-cancel" class="px-3.5 py-1.5 text-xs text-[#a1a4a5] hover:text-[#fcfdff] bg-[#101012] border border-[rgba(255,255,255,0.06)] rounded-[8px] transition">रद्द करा</button>
+        <button id="modal-btn-confirm" class="px-3.5 py-1.5 text-xs font-medium text-[#fcfdff] bg-[#ff2047]/20 border border-[#ff2047]/40 hover:bg-[#ff2047]/30 rounded-[8px] transition">होय, पुसा</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="h-16 border-b border-[rgba(255,255,255,0.06)] bg-[#000000]/90 backdrop-blur sticky top-0 z-30 px-6 sm:px-10 flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-7 h-7 rounded-[8px] bg-[#101012] border border-[rgba(255,255,255,0.14)] flex items-center justify-center text-[#fcfdff]">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+          </svg>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-semibold tracking-tight text-[#fcfdff]">KeyVerify</span>
+          <span class="text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded-full bg-[#101012] text-[#888e90] border border-[rgba(255,255,255,0.06)]">PRO v2.5</span>
+        </div>
+      </div>
+
+      <!-- Mode Switcher Pill -->
+      <div class="hidden md:flex items-center p-0.5 rounded-[8px] bg-[#101012] border border-[rgba(255,255,255,0.06)] font-mono text-xs">
+        <button id="mode-single-btn" onclick="switchAppMode('single')" class="px-3 py-1 rounded-[6px] text-[#fcfdff] bg-[#000000] border border-[rgba(255,255,255,0.14)] transition">
+          Single Inspector
+        </button>
+        <button id="mode-batch-btn" onclick="switchAppMode('batch')" class="px-3 py-1 rounded-[6px] text-[#888e90] hover:text-[#fcfdff] transition">
+          Bulk Batch Audit
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Controls -->
+    <div class="flex items-center gap-3">
+      <div class="hidden lg:flex items-center gap-2 text-xs text-[#a1a4a5] font-mono pr-2">
+        <span class="w-1.5 h-1.5 rounded-full bg-[#11ff99]"></span>
+        <span>Client-side Sandbox &bull; In-Memory</span>
+      </div>
+      <button 
+        id="open-history-btn" 
+        class="h-9 px-3.5 rounded-[8px] bg-[#101012] hover:bg-[#151518] text-xs font-medium text-[#fcfdff] border border-[rgba(255,255,255,0.14)] transition flex items-center gap-2"
+      >
+        <svg class="w-3.5 h-3.5 text-[#888e90]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span>History</span>
+        <span id="history-counter-badge" class="px-1.5 py-0.2 rounded-full bg-[#000000] text-[#a1a4a5] border border-[rgba(255,255,255,0.06)] text-[10px] font-mono">0</span>
+      </button>
+    </div>
+  </nav>
+
+  <main class="w-full max-w-[1240px] mx-auto px-6 sm:px-10 py-10 sm:py-14 flex-1 relative">
+    <div id="atmospheric-wash" class="glow-atmospheric"></div>
+
+    <!-- Editorial Hero Stripe -->
+    <header class="mb-10 text-left relative z-10">
+      <div class="flex flex-wrap items-center gap-2 mb-4 font-mono text-[11px]">
+        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#101012] border border-[rgba(255,255,255,0.06)] text-[#a1a4a5]">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#3b9eff]"></span>
+          <span>Zero Server Storage &bull; Multi-Model Probe</span>
+        </span>
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#101012] border border-[rgba(255,255,255,0.06)] text-[#ffc53d]">
+          <span>⚡ Shannon Entropy & Jitter Pulse Built-in</span>
+        </span>
+      </div>
+
+      <h1 class="display-editorial text-5xl sm:text-7xl lg:text-8xl font-normal text-[#fcfdff] max-w-4xl tracking-tight">
+        Keys validated.<br><span class="italic text-[#fcfdff]/90">Endpoints audited.</span>
+      </h1>
+      <p class="mt-4 text-xs sm:text-sm text-[#a1a4a5] max-w-2xl font-normal leading-relaxed">
+        तुमची API Key त्वरित तपासा. Status Code (200, 401, 403, 429, 500), लेटन्सी, एन्ट्रॉपी, आणि उपलब्ध मॉडेल्स एका क्लिकवर अचूक विश्लेषित करा.
+      </p>
+
+      <!-- Quick Interactive Demos -->
+      <div class="mt-5 flex flex-wrap items-center gap-2 text-xs font-mono">
+        <span class="text-[#888e90]">Quick test:</span>
+        <button type="button" onclick="loadDemoKey('gemini_invalid')" class="px-2.5 py-1 rounded-[6px] bg-[#101012] border border-[rgba(255,255,255,0.06)] text-[#ff801f] hover:border-[rgba(255,255,255,0.2)] transition">
+          Simulate 401 (Invalid Key)
+        </button>
+        <button type="button" onclick="loadDemoKey('github_public')" class="px-2.5 py-1 rounded-[6px] bg-[#101012] border border-[rgba(255,255,255,0.06)] text-[#11ff99] hover:border-[rgba(255,255,255,0.2)] transition">
+          Test Public Endpoint (200 OK)
+        </button>
+        <button type="button" onclick="switchAppMode('batch')" class="px-2.5 py-1 rounded-[6px] bg-[#101012] border border-[rgba(255,255,255,0.06)] text-[#3b9eff] hover:border-[rgba(255,255,255,0.2)] transition">
+          Open Batch Bulk Tester &rarr;
+        </button>
+      </div>
+    </header>
+
+    <!-- ==================== VIEW 1: SINGLE INSPECTOR ==================== -->
+    <div id="single-view-container" class="space-y-8">
+      
+      <!-- Provider Selection Strip -->
+      <section class="relative z-10">
+        <div class="flex items-center justify-between mb-3 text-xs text-[#888e90] font-mono">
+          <span>01 / SELECT PROVIDER OR PASTE KEY TO AUTO-DETECT</span>
+          <span id="provider-counter" class="text-[11px] text-[#464a4d]">9 PRESETS LOADED</span>
+        </div>
+        <div class="flex flex-wrap gap-2" id="providers-container">
+          <!-- Populated dynamically with Gemini, OpenAI, Claude, Groq, DeepSeek, Mistral, etc. -->
+        </div>
+      </section>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative z-10">
+        
+        <!-- Left Panel: Input & Config -->
+        <section class="lg:col-span-5 bg-[#0a0a0c] border border-[rgba(255,255,255,0.14)] rounded-[12px] p-6 sm:p-7">
+          <div class="flex items-start justify-between pb-5 mb-5 border-b border-[rgba(255,255,255,0.06)]">
+            <div>
+              <div class="flex items-center gap-2">
+                <span id="provider-badge-icon" class="text-sm font-mono text-[#3b9eff]">●</span>
+                <h2 id="selected-provider-title" class="text-base font-medium text-[#fcfdff]">Google Gemini</h2>
+              </div>
+              <p id="selected-provider-subtitle" class="text-xs text-[#888e90] mt-0.5">Generative Language API</p>
+            </div>
+            <a id="provider-doc-link" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-xs text-[#3b9eff] hover:underline flex items-center gap-1 font-mono">
+              <span>Get key</span>
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            </a>
+          </div>
+
+          <form id="api-test-form" class="space-y-4" onsubmit="event.preventDefault(); handleValidateKey();">
+            
+            <!-- API Key Input Field -->
+            <div>
+              <div class="flex justify-between items-center mb-2">
+                <label for="api-key-input" class="text-xs font-medium text-[#fcfdff] flex items-center gap-1.5">
+                  <span>API Key or Token</span>
+                  <span class="text-[#ff2047]">*</span>
+                </label>
+                <div class="flex items-center gap-3">
+                  <span id="key-char-count" class="text-[11px] text-[#464a4d] font-mono">0 chars</span>
+                  <button type="button" id="toggle-key-visibility" class="text-xs text-[#888e90] hover:text-[#fcfdff] transition flex items-center gap-1 font-mono">
+                    <span id="eye-text">Show</span>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="relative">
+                <input 
+                  type="password" 
+                  id="api-key-input" 
+                  placeholder="Paste AIzaSy..., sk-..., gsk_..., ghp_..." 
+                  autocomplete="off"
+                  spellcheck="false"
+                  class="w-full bg-[#06060a] border border-[rgba(255,255,255,0.14)] focus:border-[#fcfdff] rounded-[8px] px-3.5 py-2.5 text-xs font-mono text-[#fcfdff] placeholder-[#464a4d] outline-none transition pr-10"
+                />
+                <button type="button" id="clear-input-btn" class="absolute right-3 top-2.5 text-[#464a4d] hover:text-[#fcfdff] hidden transition" title="Clear">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Advanced Key Security & Entropy Pill Bar -->
+              <div class="mt-2.5 p-2 rounded-[6px] bg-[#06060a] border border-[rgba(255,255,255,0.06)] flex items-center justify-between text-[11px] font-mono">
+                <div class="flex items-center gap-2">
+                  <span class="text-[#888e90]">Entropy:</span>
+                  <span id="key-entropy-badge" class="text-[#fcfdff]">0.00 bits</span>
+                  <span id="entropy-eval-tag" class="text-[9px] px-1 rounded bg-[#101012] text-[#464a4d]">Empty</span>
+                </div>
+                <div id="key-format-hint" class="text-[#888e90] truncate max-w-[170px]">
+                  <span>AIzaSy...</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Advanced Config Collapsible Drawer -->
+            <div class="border border-[rgba(255,255,255,0.06)] rounded-[8px] bg-[#06060a] overflow-hidden">
+              <button 
+                type="button" 
+                id="toggle-custom-params-btn"
+                class="w-full px-3.5 py-2 text-xs text-[#a1a4a5] hover:text-[#fcfdff] flex items-center justify-between transition"
+              >
+                <div class="flex items-center gap-2 font-mono">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#3b9eff]"></span>
+                  <span>Endpoint, Headers & Proxy</span>
+                </div>
+                <svg id="custom-params-arrow" class="w-3.5 h-3.5 text-[#888e90] transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+
+              <div id="custom-params-body" class="p-3.5 space-y-3.5 hidden border-t border-[rgba(255,255,255,0.06)]">
+                <div>
+                  <label class="text-[11px] font-mono text-[#888e90] block mb-1">ENDPOINT URL</label>
+                  <div class="flex gap-2">
+                    <select id="request-method" class="bg-[#101012] border border-[rgba(255,255,255,0.14)] text-xs font-mono text-[#fcfdff] px-2.5 py-1.5 rounded-[8px] outline-none">
+                      <option value="GET">GET</option>
+                      <option value="POST">POST</option>
+                    </select>
+                    <input 
+                      type="text" 
+                      id="endpoint-url-input" 
+                      class="flex-1 bg-[#101012] border border-[rgba(255,255,255,0.14)] px-2.5 py-1.5 text-xs font-mono text-[#fcfdff] rounded-[8px] outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="text-[11px] font-mono text-[#888e90] block mb-1">AUTH TYPE</label>
+                    <select id="auth-type-select" class="w-full bg-[#101012] border border-[rgba(255,255,255,0.14)] text-xs font-mono text-[#fcfdff] px-2.5 py-1.5 rounded-[8px] outline-none">
+                      <option value="query">URL Query Param</option>
+                      <option value="bearer">Header: Bearer</option>
+                      <option value="header_custom">Header: Custom</option>
+                    </select>
+                  </div>
+                  <div id="auth-param-name-wrapper">
+                    <label id="auth-param-label" class="text-[11px] font-mono text-[#888e90] block mb-1">PARAM NAME</label>
+                    <input 
+                      type="text" 
+                      id="auth-param-name" 
+                      value="key" 
+                      class="w-full bg-[#101012] border border-[rgba(255,255,255,0.14)] px-2.5 py-1.5 text-xs font-mono text-[#fcfdff] rounded-[8px] outline-none"
+                    />
+                  </div>
+                </div>
+
+                <!-- Proxy & Fallback selector -->
+                <div class="pt-2 border-t border-[rgba(255,255,255,0.04)] space-y-2">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <input type="checkbox" id="cors-proxy-toggle" class="rounded bg-[#101012] border-[rgba(255,255,255,0.14)] text-[#fcfdff] focus:ring-0 cursor-pointer">
+                      <label for="cors-proxy-toggle" class="text-xs text-[#a1a4a5] cursor-pointer">
+                        Use Smart CORS Proxy
+                      </label>
+                    </div>
+                    <select id="proxy-service-select" class="bg-[#101012] border border-[rgba(255,255,255,0.14)] text-[10px] font-mono text-[#a1a4a5] px-1.5 py-0.5 rounded">
+                      <option value="corsproxy">Proxy A (corsproxy.io)</option>
+                      <option value="allorigins">Proxy B (allorigins)</option>
+                    </select>
+                  </div>
+                  <p class="text-[10px] text-[#888e90] font-mono">
+                    OpenAI आणि काही खाजगी API थेट ब्राउझरवरून CORS ब्लॉक करतात. हा पर्याय ऑन केल्यास विनंती प्रॉक्सीमार्फत थेट पूर्ण होते.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Primary CTAs & Benchmarking buttons -->
+            <div class="pt-2 flex flex-col gap-2">
+              <button 
+                type="submit" 
+                id="validate-btn" 
+                class="w-full h-10 px-4 rounded-[8px] text-xs font-medium text-[#000000] bg-[#fcfdff] hover:bg-[#f1f7fe] active:bg-[#e2ebf5] transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span id="btn-spinner" class="hidden">
+                  <svg class="animate-spin h-3.5 w-3.5 text-black" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                  </svg>
+                </span>
+                <span id="btn-label">Validate API Key</span>
+              </button>
+
+              <div class="grid grid-cols-2 gap-2">
+                <button 
+                  type="button" 
+                  id="pulse-benchmark-btn" 
+                  onclick="runPulseBenchmark()"
+                  class="h-8 rounded-[8px] bg-[#101012] hover:bg-[#151518] border border-[rgba(255,255,255,0.14)] text-xs font-mono text-[#3b9eff] flex items-center justify-center gap-1.5 transition"
+                >
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                  <span>3x Jitter Pulse</span>
+                </button>
+
+                <button 
+                  type="button" 
+                  id="reset-form-btn" 
+                  class="h-8 rounded-[8px] bg-[#101012] hover:bg-[#151518] border border-[rgba(255,255,255,0.06)] text-xs font-mono text-[#888e90] hover:text-[#fcfdff] transition"
+                >
+                  Reset Form
+                </button>
+              </div>
+            </div>
+
+          </form>
+
+          <!-- Security Statement -->
+          <div class="mt-5 pt-3.5 border-t border-[rgba(255,255,255,0.06)] text-[11px] text-[#888e90] flex items-center gap-2 font-mono">
+            <span class="w-1.5 h-1.5 rounded-full bg-[#11ff99]"></span>
+            <span>Zero Server Storage &bull; In-Memory Execution Only</span>
+          </div>
+        </section>
+
+        <!-- Right Panel: Diagnostics & Inspector -->
+        <section class="lg:col-span-7 space-y-5">
+          
+          <!-- Status Overview Card -->
+          <div id="status-card" class="bg-[#0a0a0c] border border-[rgba(255,255,255,0.14)] rounded-[12px] p-6 relative overflow-hidden transition-all duration-300">
+            
+            <!-- Idle Empty State -->
+            <div id="status-empty-state" class="py-10 text-center">
+              <div class="w-9 h-9 rounded-full bg-[#101012] border border-[rgba(255,255,255,0.06)] mx-auto flex items-center justify-center text-[#888e90] mb-3">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+              </div>
+              <h3 class="text-sm font-medium text-[#fcfdff] mb-1">Awaiting Request</h3>
+              <p class="text-xs text-[#888e90] max-w-sm mx-auto font-mono">
+                Provide your API key and press "Validate API Key". Detailed HTTP code, latency benchmark, permissions, and response headers will display here.
+              </p>
+            </div>
+
+            <!-- Loading State -->
+            <div id="status-loading-state" class="py-12 text-center hidden">
+              <div class="w-8 h-8 rounded-full border-2 border-[rgba(255,255,255,0.14)] border-t-[#fcfdff] animate-spin mx-auto mb-4"></div>
+              <h3 id="loading-state-title" class="text-sm font-medium text-[#fcfdff] mb-1">Connecting to API Endpoint...</h3>
+              <p id="loading-state-sub" class="text-xs text-[#888e90] font-mono">Measuring DNS & HTTP response latency</p>
+            </div>
+
+            <!-- Active Result Content -->
+            <div id="status-result-content" class="hidden space-y-4">
+              
+              <!-- Result Banner -->
+              <div id="result-banner" class="rounded-[8px] p-4 border border-[rgba(255,255,255,0.14)] bg-[#101012] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <div id="status-pill-dot" class="w-2.5 h-2.5 rounded-full bg-[#11ff99]"></div>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span id="status-code-badge" class="font-mono text-xs font-semibold px-2 py-0.5 rounded-[4px] bg-[#000000] text-[#fcfdff] border border-[rgba(255,255,255,0.14)]">
+                        200 OK
+                      </span>
+                      <span id="latency-val" class="font-mono text-xs text-[#888e90]">120 ms</span>
+                      <span id="latency-speed-tag" class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#000000] text-[#11ff99] border border-[rgba(255,255,255,0.06)]">Fast</span>
+                    </div>
+                    <h3 id="status-title-text" class="text-sm font-medium text-[#fcfdff] mt-1">Valid & Active Key</h3>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <button id="retry-proxy-btn" onclick="retryWithProxy()" class="hidden px-2.5 py-1.5 rounded-[8px] bg-[#ffc53d]/10 hover:bg-[#ffc53d]/20 text-[#ffc53d] text-xs font-mono border border-[#ffc53d]/30 transition items-center gap-1.5">
+                    <span>Retry via Proxy</span>
+                  </button>
+                  <button onclick="handleValidateKey()" class="px-3 py-1.5 rounded-[8px] bg-[#000000] hover:bg-[#101012] text-xs font-mono text-[#a1a4a5] hover:text-[#fcfdff] transition border border-[rgba(255,255,255,0.14)] flex items-center gap-1.5 self-start sm:self-auto">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <span>Re-test</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Marathi Diagnostic Explanation Card -->
+              <div class="bg-[#06060a] border border-[rgba(255,255,255,0.06)] rounded-[8px] p-4 text-xs">
+                <div class="text-[11px] font-mono uppercase tracking-wider text-[#888e90] mb-2 flex items-center justify-between">
+                  <span>विश्लेषण व मार्गदर्शन (DIAGNOSTICS & ADVICE)</span>
+                  <span id="diagnostic-category-tag" class="text-[10px] text-[#3b9eff]">VALIDATION REPORT</span>
+                </div>
+                <p id="diagnostic-marathi-explanation" class="text-[#fcfdff]/90 leading-relaxed font-sans mb-2"></p>
+                <div class="pt-2 border-t border-[rgba(255,255,255,0.04)] text-[#a1a4a5] flex items-start gap-2">
+                  <span class="text-[#3b9eff] font-mono">Tip:</span>
+                  <span id="diagnostic-recommendation-text"></span>
+                </div>
+              </div>
+
+              <!-- Discovered Models & Capability Chip Section -->
+              <div id="discovered-capabilities-card" class="bg-[#06060a] border border-[rgba(255,255,255,0.06)] rounded-[8px] p-3 hidden text-xs font-mono">
+                <div class="flex items-center justify-between text-[11px] text-[#888e90] mb-2">
+                  <span>DISCOVERED CAPABILITIES / MODELS</span>
+                  <span id="discovered-count-tag" class="text-[#11ff99]">0 AVAILABLE</span>
+                </div>
+                <div id="discovered-chips-container" class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto"></div>
+              </div>
+
+              <!-- Rate Limit Metrics Grid -->
+              <div class="grid grid-cols-3 gap-2">
+                <div class="p-3 rounded-[8px] bg-[#06060a] border border-[rgba(255,255,255,0.06)]">
+                  <div class="text-[10px] font-mono text-[#888e90] uppercase">REMAINING</div>
+                  <div id="rate-remaining" class="text-sm font-mono font-medium text-[#fcfdff] mt-1">N/A</div>
+                </div>
+                <div class="p-3 rounded-[8px] bg-[#06060a] border border-[rgba(255,255,255,0.06)]">
+                  <div class="text-[10px] font-mono text-[#888e90] uppercase">LIMIT</div>
+                  <div id="rate-limit" class="text-sm font-mono font-medium text-[#fcfdff] mt-1">N/A</div>
+                </div>
+                <div class="p-3 rounded-[8px] bg-[#06060a] border border-[rgba(255,255,255,0.06)]">
+                  <div class="text-[10px] font-mono text-[#888e90] uppercase">RESET / RETRY</div>
+                  <div id="rate-reset" class="text-sm font-mono font-medium text-[#fcfdff] mt-1">N/A</div>
+                </div>
+              </div>
+
+              <!-- Jitter Benchmark Summary Strip (hidden until pulse run) -->
+              <div id="pulse-benchmark-results" class="hidden p-3 rounded-[8px] bg-[#06060a] border border-[#3b9eff]/30 text-xs font-mono">
+                <div class="flex items-center justify-between text-[11px] text-[#3b9eff] mb-1.5">
+                  <span>3-STAGE JITTER BENCHMARK RESULTS</span>
+                  <span id="benchmark-verdict" class="text-[#11ff99]">Stable Connection</span>
+                </div>
+                <div class="grid grid-cols-4 gap-2 text-center">
+                  <div><span class="text-[#888e90] text-[10px] block">MIN</span><span id="pulse-min" class="text-[#fcfdff] font-medium">-</span></div>
+                  <div><span class="text-[#888e90] text-[10px] block">AVG</span><span id="pulse-avg" class="text-[#fcfdff] font-medium">-</span></div>
+                  <div><span class="text-[#888e90] text-[10px] block">MAX</span><span id="pulse-max" class="text-[#fcfdff] font-medium">-</span></div>
+                  <div><span class="text-[#888e90] text-[10px] block">JITTER</span><span id="pulse-jitter" class="text-[#fcfdff] font-medium">-</span></div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- Resend Signature Component: Code Window with multi-language generator -->
+          <div class="bg-[#06060a] border border-[rgba(255,255,255,0.14)] rounded-[12px] overflow-hidden">
+            
+            <!-- Code Window Header: Traffic light dots & tab strip -->
+            <div class="h-10 px-4 border-b border-[rgba(255,255,255,0.06)] flex items-center justify-between bg-[#0a0a0c]">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-[#ff2047]"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-[#ffc53d]"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-[#11ff99]"></span>
+              </div>
+
+              <!-- Code Tabs -->
+              <div class="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                <button id="tab-btn-response" onclick="switchInspectorTab('response')" class="px-2.5 py-1 text-xs font-mono rounded-[6px] text-[#fcfdff] bg-[#101012] border border-[rgba(255,255,255,0.14)] whitespace-nowrap">Response</button>
+                <button id="tab-btn-headers" onclick="switchInspectorTab('headers')" class="px-2.5 py-1 text-xs font-mono rounded-[6px] text-[#888e90] hover:text-[#fcfdff] transition whitespace-nowrap">Headers</button>
+                <button id="tab-btn-curl" onclick="switchInspectorTab('curl')" class="px-2.5 py-1 text-xs font-mono rounded-[6px] text-[#888e90] hover:text-[#fcfdff] transition whitespace-nowrap">cURL</button>
+                <button id="tab-btn-python" onclick="switchInspectorTab('python')" class="px-2.5 py-1 text-xs font-mono rounded-[6px] text-[#888e90] hover:text-[#fcfdff] transition whitespace-nowrap">Python</button>
+                <button id="tab-btn-node" onclick="switchInspectorTab('node')" class="px-2.5 py-1 text-xs font-mono rounded-[6px] text-[#888e90] hover:text-[#fcfdff] transition whitespace-nowrap">Node.js</button>
+                <button id="tab-btn-env" onclick="switchInspectorTab('env')" class="px-2.5 py-1 text-xs font-mono rounded-[6px] text-[#888e90] hover:text-[#fcfdff] transition whitespace-nowrap">.env</button>
+              </div>
+
+              <!-- Copy & Export action -->
+              <div class="flex items-center gap-2">
+                <button onclick="copyCurrentTabContent()" class="text-xs text-[#888e90] hover:text-[#fcfdff] transition flex items-center gap-1 font-mono">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                  <span>Copy</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Code Well Body: Geist Mono 13px -->
+            <div class="p-4">
+              <div id="inspector-tab-response">
+                <pre id="response-body-pre" class="font-mono text-[13px] text-[#a1a4a5] overflow-x-auto max-h-72 leading-relaxed selection:bg-white selection:text-black">// Awaiting execution. Enter API key and click "Validate API Key".</pre>
+              </div>
+
+              <div id="inspector-tab-headers" class="hidden">
+                <div class="overflow-x-auto max-h-72 font-mono text-[12px]">
+                  <table class="w-full text-left">
+                    <thead>
+                      <tr class="text-[#888e90] border-b border-[rgba(255,255,255,0.06)]">
+                        <th class="py-1 px-2 font-medium">Header</th>
+                        <th class="py-1 px-2 font-medium">Value</th>
+                      </tr>
+                    </thead>
+                    <tbody id="response-headers-tbody" class="divide-y divide-[rgba(255,255,255,0.04)] text-[#a1a4a5]">
+                      <tr><td colspan="2" class="py-3 text-center text-[#464a4d]">No headers inspected yet</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div id="inspector-tab-curl" class="hidden">
+                <pre id="curl-preview-pre" class="font-mono text-[13px] text-[#3b9eff] overflow-x-auto max-h-72 leading-relaxed"></pre>
+              </div>
+
+              <div id="inspector-tab-python" class="hidden">
+                <pre id="python-preview-pre" class="font-mono text-[13px] text-[#ffc53d] overflow-x-auto max-h-72 leading-relaxed"></pre>
+              </div>
+
+              <div id="inspector-tab-node" class="hidden">
+                <pre id="node-preview-pre" class="font-mono text-[13px] text-[#11ff99] overflow-x-auto max-h-72 leading-relaxed"></pre>
+              </div>
+
+              <div id="inspector-tab-env" class="hidden">
+                <pre id="env-preview-pre" class="font-mono text-[13px] text-[#fcfdff] overflow-x-auto max-h-72 leading-relaxed"></pre>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Bottom Utility: Export Markdown Report -->
+          <div class="flex items-center justify-between p-3 rounded-[8px] bg-[#0a0a0c] border border-[rgba(255,255,255,0.06)] text-xs font-mono">
+            <span class="text-[#888e90]">Need to share this test with your engineering team?</span>
+            <button onclick="exportMarkdownAuditReport()" class="px-2.5 py-1 rounded-[6px] bg-[#101012] border border-[rgba(255,255,255,0.14)] text-[#fcfdff] hover:bg-[#151518] transition flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-[#3b9eff]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              <span>Export Audit Markdown</span>
+            </button>
+          </div>
+
+        </section>
+
+      </div>
+    </div>
+
+    <!-- ==================== VIEW 2: BULK BATCH AUDITOR ==================== -->
+    <div id="batch-view-container" class="hidden space-y-6 relative z-10">
+      
+      <div class="bg-[#0a0a0c] border border-[rgba(255,255,255,0.14)] rounded-[12px] p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[rgba(255,255,255,0.06)]">
+          <div>
+            <h2 class="text-base font-medium text-[#fcfdff]">Bulk Key Auditor (Parallel Multi-Test)</h2>
+            <p class="text-xs text-[#888e90] mt-1">Paste multiple API keys (one per line). Auto-detects each key's provider and tests them in real-time.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="fillBatchExample()" class="px-3 py-1.5 rounded-[8px] bg-[#101012] border border-[rgba(255,255,255,0.14)] text-xs font-mono text-[#a1a4a5] hover:text-[#fcfdff]">
+              Load Mock Keys
+            </button>
+            <button onclick="clearBatch()" class="px-3 py-1.5 rounded-[8px] bg-[#101012] border border-[rgba(255,255,255,0.06)] text-xs font-mono text-[#888e90] hover:text-[#ff2047]">
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <label class="text-xs font-mono text-[#888e90] block mb-2">PASTE KEYS (ONE PER LINE):</label>
+          <textarea 
+            id="batch-keys-input" 
+            rows="5" 
+            placeholder="AIzaSyA... (Gemini)&#10;sk-ant-... (Anthropic)&#10;gsk_... (Groq)&#10;ghp_... (GitHub)"
+            class="w-full bg-[#06060a] border border-[rgba(255,255,255,0.14)] focus:border-[#fcfdff] rounded-[8px] p-3 text-xs font-mono text-[#fcfdff] placeholder-[#464a4d] outline-none"
+          ></textarea>
+        </div>
+
+        <div class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div class="text-xs font-mono text-[#888e90]">
+            <span id="batch-count-indicator">0 keys detected</span>
+          </div>
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <button 
+              id="batch-run-btn" 
+              onclick="runBatchValidation()" 
+              class="flex-1 sm:flex-initial h-9 px-5 rounded-[8px] text-xs font-medium text-[#000000] bg-[#fcfdff] hover:bg-[#f1f7fe] transition flex items-center justify-center gap-2"
+            >
+              <span id="batch-spinner" class="hidden">
+                <svg class="animate-spin h-3.5 w-3.5 text-black" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+              </span>
+              <span id="batch-btn-label">Run Batch Validation</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Batch Results Table -->
+      <div id="batch-results-wrapper" class="bg-[#0a0a0c] border border-[rgba(255,255,255,0.14)] rounded-[12px] p-6 hidden">
+        <div class="flex items-center justify-between pb-4 border-b border-[rgba(255,255,255,0.06)]">
+          <div class="flex items-center gap-2 font-mono text-xs">
+            <span class="w-2 h-2 rounded-full bg-[#11ff99]"></span>
+            <span class="text-[#fcfdff] font-medium">Batch Results Table</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="exportBatchCSV()" class="px-2.5 py-1 text-xs font-mono rounded-[6px] bg-[#101012] border border-[rgba(255,255,255,0.14)] text-[#a1a4a5] hover:text-[#fcfdff]">Export CSV</button>
+            <button onclick="exportBatchJSON()" class="px-2.5 py-1 text-xs font-mono rounded-[6px] bg-[#101012] border border-[rgba(255,255,255,0.14)] text-[#a1a4a5] hover:text-[#fcfdff]">Export JSON</button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto mt-3">
+          <table class="w-full text-left font-mono text-xs">
+            <thead>
+              <tr class="text-[#888e90] border-b border-[rgba(255,255,255,0.06)]">
+                <th class="py-2 px-3">#</th>
+                <th class="py-2 px-3">Key (Masked)</th>
+                <th class="py-2 px-3">Provider</th>
+                <th class="py-2 px-3">Entropy</th>
+                <th class="py-2 px-3">Status</th>
+                <th class="py-2 px-3">Latency</th>
+                <th class="py-2 px-3">Verdict</th>
+              </tr>
+            </thead>
+            <tbody id="batch-results-tbody" class="divide-y divide-[rgba(255,255,255,0.04)] text-[#a1a4a5]">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- History Drawer -->
+  <div id="history-modal" class="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm hidden items-center justify-end p-0">
+    <div class="bg-[#0a0a0c] border-l border-[rgba(255,255,255,0.14)] w-full max-w-md h-full flex flex-col p-6 shadow-none">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-[rgba(255,255,255,0.06)]">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-[#fcfdff]"></span>
+          <h3 class="font-medium text-[#fcfdff] text-sm">Validation History</h3>
+        </div>
+        <button id="close-history-btn" class="p-1 rounded-[6px] text-[#888e90] hover:text-[#fcfdff] bg-[#101012] transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="py-3 flex items-center justify-between text-xs font-mono text-[#888e90] border-b border-[rgba(255,255,255,0.04)]">
+        <span>Session-only memory (Keys masked)</span>
+        <button id="clear-all-history-btn" class="text-[#ff2047] hover:underline">Clear all</button>
+      </div>
+
+      <div id="history-list" class="flex-1 overflow-y-auto py-3 space-y-2"></div>
+
+      <div class="pt-4 border-t border-[rgba(255,255,255,0.06)] flex gap-2">
+        <button id="history-done-btn" class="flex-1 h-9 bg-[#101012] hover:bg-[#151518] text-[#fcfdff] text-xs font-medium rounded-[8px] border border-[rgba(255,255,255,0.14)] transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-[rgba(255,255,255,0.06)] bg-[#000000] py-8 text-xs text-[#888e90] font-mono">
+    <div class="max-w-[1240px] mx-auto px-6 sm:px-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-[#11ff99]"></span>
+        <span class="text-[#fcfdff]">KeyVerify Pro</span>
+        <span class="text-[#464a4d]">&bull;</span>
+        <span>Developer API Key Inspector, Jitter Benchmark & Batch Auditor</span>
+      </div>
+      <div>100% Direct in-browser calls &bull; Privacy preserved</div>
+    </div>
+  </footer>
+
+  <script>
+    // Expanded provider matrix with direct capability probing
+    const PROVIDERS = {
+      gemini: {
+        id: 'gemini',
+        name: 'Google Gemini',
+        category: 'Generative Language API',
+        docUrl: 'https://aistudio.google.com/app/apikey',
+        formatHint: "Starts with 'AIzaSy...' (Google AI Studio Key).",
+        detectPrefix: 'AIzaSy',
+        method: 'GET',
+        endpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
+        authType: 'query',
+        authParamName: 'key',
+        supportsDirectCors: true,
+        extraHeaders: {},
+        envName: 'GEMINI_API_KEY'
+      },
+      openai: {
+        id: 'openai',
+        name: 'OpenAI',
+        category: 'LLM Platform',
+        docUrl: 'https://platform.openai.com/api-keys',
+        formatHint: "Starts with 'sk-...' token.",
+        detectPrefix: 'sk-',
+        method: 'GET',
+        endpoint: 'https://api.openai.com/v1/models',
+        authType: 'bearer',
+        authParamName: 'Authorization',
+        supportsDirectCors: false,
+        extraHeaders: {},
+        envName: 'OPENAI_API_KEY'
+      },
+      anthropic: {
+        id: 'anthropic',
+        name: 'Anthropic Claude',
+        category: 'Claude API',
+        docUrl: 'https://console.anthropic.com/settings/keys',
+        formatHint: "Starts with 'sk-ant-api03-...' or 'sk-ant-...'",
+        detectPrefix: 'sk-ant-',
+        method: 'GET',
+        endpoint: 'https://api.anthropic.com/v1/models',
+        authType: 'header_custom',
+        authParamName: 'x-api-key',
+        supportsDirectCors: true,
+        extraHeaders: {
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        envName: 'ANTHROPIC_API_KEY'
+      },
+      groq: {
+        id: 'groq',
+        name: 'Groq Cloud',
+        category: 'Fast Inference API',
+        docUrl: 'https://console.groq.com/keys',
+        formatHint: "Starts with 'gsk_...'",
+        detectPrefix: 'gsk_',
+        method: 'GET',
+        endpoint: 'https://api.groq.com/openai/v1/models',
+        authType: 'bearer',
+        authParamName: 'Authorization',
+        supportsDirectCors: true,
+        extraHeaders: {},
+        envName: 'GROQ_API_KEY'
+      },
+      deepseek: {
+        id: 'deepseek',
+        name: 'DeepSeek',
+        category: 'DeepSeek AI Platform',
+        docUrl: 'https://platform.deepseek.com/api_keys',
+        formatHint: "Starts with 'sk-...' (DeepSeek token)",
+        detectPrefix: 'sk-',
+        method: 'GET',
+        endpoint: 'https://api.deepseek.com/models',
+        authType: 'bearer',
+        authParamName: 'Authorization',
+        supportsDirectCors: false,
+        extraHeaders: {},
+        envName: 'DEEPSEEK_API_KEY'
+      },
+      mistral: {
+        id: 'mistral',
+        name: 'Mistral AI',
+        category: 'Frontier AI API',
+        docUrl: 'https://console.mistral.ai/api-keys/',
+        formatHint: "Bearer token",
+        detectPrefix: null,
+        method: 'GET',
+        endpoint: 'https://api.mistral.ai/v1/models',
+        authType: 'bearer',
+        authParamName: 'Authorization',
+        supportsDirectCors: false,
+        extraHeaders: {},
+        envName: 'MISTRAL_API_KEY'
+      },
+      github: {
+        id: 'github',
+        name: 'GitHub PAT',
+        category: 'Developer Platform API',
+        docUrl: 'https://github.com/settings/tokens',
+        formatHint: "'ghp_...' or 'github_pat_...'",
+        detectPrefix: 'ghp_',
+        method: 'GET',
+        endpoint: 'https://api.github.com/user',
+        authType: 'bearer',
+        authParamName: 'Authorization',
+        supportsDirectCors: true,
+        extraHeaders: {
+          'Accept': 'application/vnd.github+json'
+        },
+        envName: 'GITHUB_TOKEN'
+      },
+      huggingface: {
+        id: 'huggingface',
+        name: 'Hugging Face',
+        category: 'AI Hub & Inference',
+        docUrl: 'https://huggingface.co/settings/tokens',
+        formatHint: "Starts with 'hf_...'",
+        detectPrefix: 'hf_',
+        method: 'GET',
+        endpoint: 'https://huggingface.co/api/whoami-v2',
+        authType: 'bearer',
+        authParamName: 'Authorization',
+        supportsDirectCors: true,
+        extraHeaders: {},
+        envName: 'HF_TOKEN'
+      },
+      custom: {
+        id: 'custom',
+        name: 'Custom Endpoint',
+        category: 'Any REST API',
+        docUrl: '#',
+        formatHint: 'Any REST API key or Bearer token.',
+        detectPrefix: null,
+        method: 'GET',
+        endpoint: 'https://httpbin.org/get',
+        authType: 'bearer',
+        authParamName: 'Authorization',
+        supportsDirectCors: true,
+        extraHeaders: {},
+        envName: 'CUSTOM_API_KEY'
+      }
+    };
+
+    // In-memory state tracking
+    let currentProviderId = 'gemini';
+    let isKeyVisible = false;
+    let currentRawResponse = '';
+    let currentHeadersString = '';
+    let currentSnippets = { curl: '', python: '', node: '', env: '' };
+    let activeInspectorTab = 'response';
+    let lastValidationReport = null;
+    let inMemoryHistory = [];
+    let batchAuditResults = [];
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const dotColors = {
+        success: 'bg-[#11ff99]',
+        error: 'bg-[#ff2047]',
+        warning: 'bg-[#ffc53d]',
+        info: 'bg-[#3b9eff]'
+      };
+
+      toast.className = `px-3.5 py-2.5 rounded-[8px] bg-[#0a0a0c] border border-[rgba(255,255,255,0.14)] text-xs font-mono text-[#fcfdff] flex items-center gap-2 transform translate-x-full transition-all duration-300 pointer-events-auto max-w-sm`;
+      toast.innerHTML = `
+        <span class="w-1.5 h-1.5 rounded-full ${dotColors[type] || dotColors.info}"></span>
+        <span>${message}</span>
+      `;
+
+      container.appendChild(toast);
+      requestAnimationFrame(() => toast.classList.remove('translate-x-full'));
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-x-full');
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
+    }
+
+    function copyTextToClipboard(text, successMsg = 'Copied to clipboard') {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.top = '0';
+        textarea.style.left = '0';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textarea);
+
+        if (successful) showToast(successMsg, 'success');
+        else showToast('Copying failed', 'error');
+      } catch (err) {
+        showToast('Clipboard error', 'error');
+      }
+    }
+
+    function calculateShannonEntropy(str) {
+      if (!str || str.length === 0) return 0;
+      const freq = {};
+      for (let i = 0; i < str.length; i++) {
+        freq[str[i]] = (freq[str[i]] || 0) + 1;
+      }
+      let entropy = 0;
+      for (const char in freq) {
+        const p = freq[char] / str.length;
+        entropy -= p * Math.log2(p);
+      }
+      return parseFloat(entropy.toFixed(2));
+    }
+
+    function updateEntropyIndicator(key) {
+      const entropy = calculateShannonEntropy(key);
+      const entropyBadge = document.getElementById('key-entropy-badge');
+      const evalTag = document.getElementById('entropy-eval-tag');
+
+      entropyBadge.innerText = `${entropy.toFixed(2)} bits`;
+
+      if (key.length === 0) {
+        evalTag.innerText = 'Empty';
+        evalTag.className = 'text-[9px] px-1 rounded bg-[#101012] text-[#464a4d]';
+      } else if (entropy < 3.0) {
+        evalTag.innerText = 'Low Randomness';
+        evalTag.className = 'text-[9px] px-1 rounded bg-[#ff2047]/20 text-[#ff2047]';
+      } else if (entropy < 4.2) {
+        evalTag.innerText = 'Moderate';
+        evalTag.className = 'text-[9px] px-1 rounded bg-[#ffc53d]/20 text-[#ffc53d]';
+      } else {
+        evalTag.innerText = 'High Entropy (Cryptographic)';
+        evalTag.className = 'text-[9px] px-1 rounded bg-[#11ff99]/20 text-[#11ff99]';
+      }
+    }
+
+    function renderProviderButtons() {
+      const container = document.getElementById('providers-container');
+      container.innerHTML = '';
+
+      Object.values(PROVIDERS).forEach(p => {
+        const isSelected = p.id === currentProviderId;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.onclick = () => selectProvider(p.id);
+        
+        btn.className = `px-3 py-1.5 rounded-[8px] text-xs font-mono transition-all flex items-center gap-2 border ${
+          isSelected 
+            ? 'bg-[#101012] border-[rgba(255,255,255,0.4)] text-[#fcfdff]' 
+            : 'bg-[#000000] border-[rgba(255,255,255,0.06)] text-[#888e90] hover:text-[#fcfdff] hover:border-[rgba(255,255,255,0.14)]'
+        }`;
+
+        btn.innerHTML = `
+          <span class="w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-[#3b9eff]' : 'bg-[#464a4d]'}"></span>
+          <span>${p.name}</span>
+        `;
+        container.appendChild(btn);
+      });
+    }
+
+    function selectProvider(providerId) {
+      currentProviderId = providerId;
+      const p = PROVIDERS[providerId];
+      renderProviderButtons();
+
+      document.getElementById('selected-provider-title').innerText = p.name;
+      document.getElementById('selected-provider-subtitle').innerText = p.category;
+      
+      const docLink = document.getElementById('provider-doc-link');
+      if (p.docUrl && p.docUrl !== '#') {
+        docLink.href = p.docUrl;
+        docLink.classList.remove('hidden');
+      } else {
+        docLink.classList.add('hidden');
+      }
+
+      document.getElementById('key-format-hint').innerHTML = `<span>${p.formatHint}</span>`;
+      document.getElementById('endpoint-url-input').value = p.endpoint;
+      document.getElementById('request-method').value = p.method;
+      document.getElementById('auth-type-select').value = p.authType;
+      document.getElementById('auth-param-name').value = p.authParamName;
+
+      const corsToggle = document.getElementById('cors-proxy-toggle');
+      corsToggle.checked = !p.supportsDirectCors;
+
+      const customParamsBody = document.getElementById('custom-params-body');
+      const customParamsArrow = document.getElementById('custom-params-arrow');
+      if (providerId === 'custom') {
+        customParamsBody.classList.remove('hidden');
+        customParamsArrow.classList.add('rotate-180');
+      }
+
+      updateAuthInputLabels();
+      updateCodePreviews();
+    }
+
+    function autoDetectProvider(val) {
+      const trimmed = val.trim();
+      if (!trimmed) return;
+
+      if (trimmed.startsWith('AIzaSy')) {
+        if (currentProviderId !== 'gemini') selectProvider('gemini');
+      } else if (trimmed.startsWith('sk-ant-')) {
+        if (currentProviderId !== 'anthropic') selectProvider('anthropic');
+      } else if (trimmed.startsWith('gsk_')) {
+        if (currentProviderId !== 'groq') selectProvider('groq');
+      } else if (trimmed.startsWith('ghp_') || trimmed.startsWith('github_pat_')) {
+        if (currentProviderId !== 'github') selectProvider('github');
+      } else if (trimmed.startsWith('hf_')) {
+        if (currentProviderId !== 'huggingface') selectProvider('huggingface');
+      } else if (trimmed.startsWith('sk-')) {
+        if (currentProviderId !== 'openai' && currentProviderId !== 'deepseek') {
+          selectProvider('openai');
+        }
+      }
+    }
+
+    function updateAuthInputLabels() {
+      const authType = document.getElementById('auth-type-select').value;
+      const paramNameWrapper = document.getElementById('auth-param-name-wrapper');
+      const paramLabel = document.getElementById('auth-param-label');
+
+      if (authType === 'query') {
+        paramNameWrapper.style.display = 'block';
+        paramLabel.innerText = 'PARAM NAME';
+      } else if (authType === 'bearer') {
+        paramNameWrapper.style.display = 'none';
+      } else if (authType === 'header_custom') {
+        paramNameWrapper.style.display = 'block';
+        paramLabel.innerText = 'HEADER NAME';
+      }
+    }
+
+    function updateCodePreviews() {
+      const apiKey = document.getElementById('api-key-input').value.trim() || 'YOUR_API_KEY';
+      const endpoint = document.getElementById('endpoint-url-input').value.trim();
+      const method = document.getElementById('request-method').value;
+      const authType = document.getElementById('auth-type-select').value;
+      const authParamName = document.getElementById('auth-param-name').value.trim() || 'key';
+      const provider = PROVIDERS[currentProviderId];
+
+      let finalUrl = endpoint;
+      const headers = { 'Accept': 'application/json' };
+
+      if (provider && provider.extraHeaders) {
+        Object.assign(headers, provider.extraHeaders);
+      }
+
+      if (authType === 'query') {
+        const sep = finalUrl.includes('?') ? '&' : '?';
+        finalUrl = `${finalUrl}${sep}${encodeURIComponent(authParamName)}=${apiKey}`;
+      } else if (authType === 'bearer') {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      } else if (authType === 'header_custom') {
+        headers[authParamName] = apiKey;
+      }
+
+      // 1. cURL
+      let curl = `curl -X ${method} "${finalUrl}"`;
+      Object.entries(headers).forEach(([k, v]) => {
+        curl += ` \\\n  -H "${k}: ${v}"`;
+      });
+      currentSnippets.curl = curl;
+      document.getElementById('curl-preview-pre').textContent = curl;
+
+      // 2. Python (requests)
+      let pythonCode = `import requests\n\n`;
+      pythonCode += `url = "${finalUrl}"\n`;
+      pythonCode += `headers = ${JSON.stringify(headers, null, 4)}\n\n`;
+      pythonCode += `response = requests.${method.toLowerCase()}(url, headers=headers)\n`;
+      pythonCode += `print("Status:", response.status_code)\n`;
+      pythonCode += `print(response.json())`;
+      currentSnippets.python = pythonCode;
+      document.getElementById('python-preview-pre').textContent = pythonCode;
+
+      // 3. Node.js (fetch / axios)
+      let nodeCode = `// Node.js v18+ Native Fetch\n`;
+      nodeCode += `const response = await fetch("${finalUrl}", {\n`;
+      nodeCode += `  method: "${method}",\n`;
+      nodeCode += `  headers: ${JSON.stringify(headers, null, 4)}\n`;
+      nodeCode += `});\n\n`;
+      nodeCode += `const data = await response.json();\n`;
+      nodeCode += `console.log("Status:", response.status, data);`;
+      currentSnippets.node = nodeCode;
+      document.getElementById('node-preview-pre').textContent = nodeCode;
+
+      // 4. .env Snippet
+      const envVarName = provider ? provider.envName : 'API_KEY';
+      let envCode = `# Environment Configuration (.env)\n`;
+      envCode += `${envVarName}=${apiKey}\n`;
+      envCode += `# Endpoint\nAPI_ENDPOINT=${endpoint}\n`;
+      currentSnippets.env = envCode;
+      document.getElementById('env-preview-pre').textContent = envCode;
+    }
+
+    async function executeSingleCall(targetUrl, method, headers, useProxy, proxyType = 'corsproxy') {
+      let finalRequestUrl = targetUrl;
+      if (useProxy) {
+        if (proxyType === 'allorigins') {
+          finalRequestUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+        } else {
+          finalRequestUrl = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`;
+        }
+      }
+
+      const startTime = performance.now();
+      const response = await fetch(finalRequestUrl, {
+        method: method,
+        headers: headers
+      });
+      const endTime = performance.now();
+      const latencyMs = Math.round(endTime - startTime);
+
+      let bodyText = '';
+      let parsedJson = null;
+      try {
+        bodyText = await response.text();
+        parsedJson = JSON.parse(bodyText);
+      } catch (e) {}
+
+      const headerEntries = [];
+      try {
+        response.headers.forEach((val, key) => headerEntries.push({ key, val }));
+      } catch (e) {}
+
+      return {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        latency: latencyMs,
+        headers: headerEntries,
+        parsedJson: parsedJson,
+        bodyText: bodyText
+      };
+    }
+
+    async function handleValidateKey() {
+      const apiKeyInput = document.getElementById('api-key-input');
+      const apiKey = apiKeyInput.value.trim();
+
+      if (!apiKey) {
+        showToast('Please enter an API key or token', 'warning');
+        apiKeyInput.focus();
+        return;
+      }
+
+      const provider = PROVIDERS[currentProviderId];
+      const endpoint = document.getElementById('endpoint-url-input').value.trim();
+      const method = document.getElementById('request-method').value;
+      const authType = document.getElementById('auth-type-select').value;
+      const authParamName = document.getElementById('auth-param-name').value.trim() || 'key';
+      const useProxy = document.getElementById('cors-proxy-toggle').checked;
+      const proxyType = document.getElementById('proxy-service-select').value;
+
+      const headers = { 'Accept': 'application/json' };
+      if (provider && provider.extraHeaders) Object.assign(headers, provider.extraHeaders);
+
+      let finalUrl = endpoint;
+      if (authType === 'query') {
+        const sep = finalUrl.includes('?') ? '&' : '?';
+        finalUrl = `${finalUrl}${sep}${encodeURIComponent(authParamName)}=${encodeURIComponent(apiKey)}`;
+      } else if (authType === 'bearer') {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      } else if (authType === 'header_custom') {
+        headers[authParamName] = apiKey;
+      }
+
+      document.getElementById('retry-proxy-btn').classList.add('hidden');
+      document.getElementById('pulse-benchmark-results').classList.add('hidden');
+      updateCodePreviews();
+      setLoadingState(true, 'Connecting to API Endpoint...', 'Measuring DNS & HTTP response latency');
+
+      try {
+        const res = await executeSingleCall(finalUrl, method, headers, useProxy, proxyType);
+
+        processValidationResult({
+          status: res.status,
+          statusText: res.statusText,
+          ok: res.ok,
+          latency: res.latency,
+          headers: res.headers,
+          body: res.parsedJson ? JSON.stringify(res.parsedJson, null, 2) : (res.bodyText || '// (Empty response payload)'),
+          rawJson: res.parsedJson,
+          apiKey: apiKey,
+          providerName: provider.name,
+          usedProxy: useProxy
+        });
+
+      } catch (networkError) {
+        processNetworkFailureResult(networkError, apiKey, provider.name, useProxy);
+      } finally {
+        setLoadingState(false);
+      }
+    }
+
+    async function runPulseBenchmark() {
+      const apiKey = document.getElementById('api-key-input').value.trim();
+      if (!apiKey) {
+        showToast('Enter API key before benchmarking', 'warning');
+        return;
+      }
+
+      setLoadingState(true, 'Executing 3-Stage Jitter Pulse...', 'Firing 3 rapid requests to measure latency dispersion');
+      const endpoint = document.getElementById('endpoint-url-input').value.trim();
+      const method = document.getElementById('request-method').value;
+      const authType = document.getElementById('auth-type-select').value;
+      const authParamName = document.getElementById('auth-param-name').value.trim() || 'key';
+      const useProxy = document.getElementById('cors-proxy-toggle').checked;
+      const proxyType = document.getElementById('proxy-service-select').value;
+      const provider = PROVIDERS[currentProviderId];
+
+      const headers = { 'Accept': 'application/json' };
+      if (provider && provider.extraHeaders) Object.assign(headers, provider.extraHeaders);
+
+      let finalUrl = endpoint;
+      if (authType === 'query') {
+        const sep = finalUrl.includes('?') ? '&' : '?';
+        finalUrl = `${finalUrl}${sep}${encodeURIComponent(authParamName)}=${encodeURIComponent(apiKey)}`;
+      } else if (authType === 'bearer') {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      } else if (authType === 'header_custom') {
+        headers[authParamName] = apiKey;
+      }
+
+      const pings = [];
+      try {
+        for (let i = 0; i < 3; i++) {
+          const res = await executeSingleCall(finalUrl, method, headers, useProxy, proxyType);
+          pings.push(res.latency);
+          await new Promise(r => setTimeout(r, 120)); // short gap
+        }
+
+        const min = Math.min(...pings);
+        const max = Math.max(...pings);
+        const avg = Math.round(pings.reduce((a, b) => a + b, 0) / pings.length);
+        const jitter = max - min;
+
+        document.getElementById('pulse-min').innerText = `${min}ms`;
+        document.getElementById('pulse-avg').innerText = `${avg}ms`;
+        document.getElementById('pulse-max').innerText = `${max}ms`;
+        document.getElementById('pulse-jitter').innerText = `±${jitter}ms`;
+
+        const verdictEl = document.getElementById('benchmark-verdict');
+        if (jitter < 150) {
+          verdictEl.innerText = 'Excellent Stability';
+          verdictEl.className = 'text-[#11ff99]';
+        } else if (jitter < 400) {
+          verdictEl.innerText = 'Moderate Jitter';
+          verdictEl.className = 'text-[#ffc53d]';
+        } else {
+          verdictEl.innerText = 'High Latency Dispersion';
+          verdictEl.className = 'text-[#ff2047]';
+        }
+
+        document.getElementById('pulse-benchmark-results').classList.remove('hidden');
+        showToast(`Benchmark complete: Avg ${avg}ms, Jitter ±${jitter}ms`, 'success');
+      } catch (err) {
+        showToast('Benchmark aborted due to network issue', 'error');
+      } finally {
+        setLoadingState(false);
+      }
+    }
+
+    function extractCapabilities(json, providerName) {
+      const container = document.getElementById('discovered-chips-container');
+      const card = document.getElementById('discovered-capabilities-card');
+      const countTag = document.getElementById('discovered-count-tag');
+      container.innerHTML = '';
+
+      if (!json) {
+        card.classList.add('hidden');
+        return;
+      }
+
+      const chips = [];
+
+      // Google Gemini
+      if (json.models && Array.isArray(json.models)) {
+        json.models.slice(0, 8).forEach(m => chips.push(m.displayName || m.name.replace('models/', '')));
+        countTag.innerText = `${json.models.length} MODELS FOUND`;
+      }
+      // OpenAI / Groq / DeepSeek
+      else if (json.data && Array.isArray(json.data)) {
+        json.data.slice(0, 8).forEach(m => chips.push(m.id));
+        countTag.innerText = `${json.data.length} MODELS FOUND`;
+      }
+      // GitHub
+      else if (json.login) {
+        chips.push(`User: @${json.login}`);
+        if (json.public_repos !== undefined) chips.push(`Public Repos: ${json.public_repos}`);
+        if (json.plan) chips.push(`Plan: ${json.plan.name}`);
+        countTag.innerText = `AUTHENTICATED USER`;
+      }
+      // Hugging Face
+      else if (json.name) {
+        chips.push(`User: ${json.name}`);
+        if (json.email) chips.push(json.email);
+        countTag.innerText = `VALID ACCOUNT`;
+      }
+
+      if (chips.length > 0) {
+        chips.forEach(chip => {
+          const span = document.createElement('span');
+          span.className = 'px-2 py-0.5 rounded bg-[#101012] border border-[rgba(255,255,255,0.14)] text-[#fcfdff] text-[10px]';
+          span.innerText = chip;
+          container.appendChild(span);
+        });
+        card.classList.remove('hidden');
+      } else {
+        card.classList.add('hidden');
+      }
+    }
+
+    function processValidationResult(result) {
+      const { status, latency, headers, body, rawJson, apiKey, providerName, usedProxy } = result;
+      const resultContent = document.getElementById('status-result-content');
+      resultContent.classList.remove('hidden');
+
+      document.getElementById('latency-val').innerText = `${latency} ms`;
+      
+      const speedTag = document.getElementById('latency-speed-tag');
+      if (latency < 300) {
+        speedTag.innerText = 'Fast';
+        speedTag.className = 'text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#000000] text-[#11ff99] border border-[#11ff99]/30';
+      } else if (latency < 800) {
+        speedTag.innerText = 'Moderate';
+        speedTag.className = 'text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#000000] text-[#ffc53d] border border-[#ffc53d]/30';
+      } else {
+        speedTag.innerText = 'Slow';
+        speedTag.className = 'text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#000000] text-[#ff801f] border border-[#ff801f]/30';
+      }
+
+      currentRawResponse = body;
+      document.getElementById('response-body-pre').textContent = body;
+      
+      const tbody = document.getElementById('response-headers-tbody');
+      tbody.innerHTML = '';
+      currentHeadersString = headers.map(h => `${h.key}: ${h.val}`).join('\n');
+
+      if (headers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" class="py-2 text-center text-[#464a4d]">No public headers returned or filtered by proxy</td></tr>';
+      } else {
+        headers.forEach(h => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="py-1 px-2 text-[#3b9eff] align-top break-all">${escapeHtml(h.key)}</td>
+            <td class="py-1 px-2 text-[#fcfdff]/80 align-top break-all">${escapeHtml(h.val)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      analyzeRateLimitHeaders(headers);
+      extractCapabilities(rawJson, providerName);
+
+      let statusCategory = 'unknown';
+      let title = '';
+      let pillColor = 'bg-[#464a4d]';
+      let washClass = 'glow-atmospheric';
+      let marathiExplanation = '';
+      let recommendation = '';
+
+      if (status >= 200 && status < 300) {
+        statusCategory = 'valid';
+        title = 'वैध व कार्यरत API Key (Valid & Active)';
+        pillColor = 'bg-[#11ff99]';
+        washClass = 'glow-atmospheric glow-success';
+        marathiExplanation = `अभिनंदन! तुमची API Key पूर्णपणे वैध आहे. API सर्व्हरने HTTP ${status} सह विनंती यशस्वीरीत्या स्वीकारली आहे. ही की तुमच्या सॉफ्टवेअर किंवा उत्पादनात वापरण्यासाठी सज्ज आहे.`;
+        recommendation = 'ही की ॲप्लिकेशनमध्ये सुरक्षित (.env किंवा Secrets) पद्धतीने वापरा. पब्लिक रिपॉझिटरीमध्ये कधीही कमिट करू नका.';
+
+      } else if (status === 401) {
+        statusCategory = 'invalid';
+        title = 'अवैध किंवा कालबाह्य API Key (Unauthorized)';
+        pillColor = 'bg-[#ff2047]';
+        washClass = 'glow-atmospheric glow-error';
+        marathiExplanation = `ही API Key अवैध (Invalid), चुकीची किंवा Expire झालेली आहे. सर्व्हरने तुमचे Authentication नाकारले आहे (HTTP 401 Unauthorized).`;
+        recommendation = 'कृपया तुमच्या प्रोव्हायडरच्या अधिकृत डॅशबोर्डवर जाऊन नवीन की जनरेट करा.';
+
+      } else if (status === 403) {
+        statusCategory = 'forbidden';
+        title = 'परवानगी नाकारली (Forbidden / Scope Error)';
+        pillColor = 'bg-[#ffc53d]';
+        washClass = 'glow-atmospheric glow-warning';
+        marathiExplanation = `की अस्तित्वात आहे, परंतु या विशिष्ट एंडपॉईंटवर किंवा मॉडेलवर ऍक्सेस करण्याची परवानगी नाही (उदा. खात्यावर Credit/Billing सक्रिय नसणे किंवा Token Scopes मर्यादित असणे).`;
+        recommendation = 'तुमच्या API खात्याचे बिलिंग (Payment method) किंवा टोकनचे Scopes / Permissions तपासा.';
+
+      } else if (status === 429) {
+        statusCategory = 'ratelimit';
+        title = 'रेट लिमिट मर्यादा संपली (Too Many Requests)';
+        pillColor = 'bg-[#ff801f]';
+        washClass = 'glow-atmospheric glow-ratelimit';
+        marathiExplanation = `तुम्ही प्रति मिनिट/तास दिलेल्या मर्यादेपेक्षा जास्त विनंत्या केल्या आहेत किंवा तुमच्या खात्याचा मोफत कोटा (Free Tier Quota) तात्पुरता संपला आहे.`;
+        recommendation = 'काही मिनिटे थांबा किंवा तुमच्या API खात्याचा Quota / Subscription प्लॅन अपग्रेड करा.';
+
+      } else if (status >= 500) {
+        statusCategory = 'server_error';
+        title = `सर्व्हर त्रुटी (Server Side Error: ${status})`;
+        pillColor = 'bg-[#ff2047]';
+        washClass = 'glow-atmospheric glow-error';
+        marathiExplanation = `API प्रोव्हायडरच्या स्वतःच्या सर्व्हरवर समस्या आली आहे (Internal Server Error / Gateway Timeout). यामध्ये तुमच्या की चा दोष नाही.`;
+        recommendation = 'प्रोव्हायडरचे स्टेटस पेज तपासा आणि काही वेळानंतर पुन्हा प्रयत्न करा.';
+
+      } else {
+        statusCategory = 'other';
+        title = `स्थिति कोड: ${status}`;
+        pillColor = 'bg-[#464a4d]';
+        marathiExplanation = `सर्व्हरने HTTP ${status} कोडसह प्रतिसाद दिला आहे. तपशीलांसाठी खालील Response JSON तपासा.`;
+        recommendation = 'पॅरामीटर्स आणि एंडपॉईंट URL अचूक असल्याची खात्री करा.';
+      }
+
+      document.getElementById('atmospheric-wash').className = washClass;
+      document.getElementById('status-code-badge').innerText = `${status} ${result.statusText || ''}`;
+      document.getElementById('status-pill-dot').className = `w-2.5 h-2.5 rounded-full ${pillColor}`;
+      document.getElementById('status-title-text').innerText = title;
+      document.getElementById('diagnostic-marathi-explanation').innerText = marathiExplanation;
+      document.getElementById('diagnostic-recommendation-text').innerText = recommendation;
+      document.getElementById('diagnostic-category-tag').innerText = `HTTP ${status} REPORT`;
+
+      lastValidationReport = {
+        provider: providerName,
+        status: status,
+        latency: latency,
+        maskedKey: maskKey(apiKey),
+        recommendation: recommendation,
+        marathiExplanation: marathiExplanation,
+        timestamp: new Date().toISOString()
+      };
+
+      saveToHistory({
+        provider: providerName,
+        status: status,
+        statusCategory: statusCategory,
+        latency: latency,
+        maskedKey: maskKey(apiKey),
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+    }
+
+    function processNetworkFailureResult(error, apiKey, providerName, usedProxy) {
+      const resultContent = document.getElementById('status-result-content');
+      resultContent.classList.remove('hidden');
+
+      document.getElementById('latency-val').innerText = `Failed`;
+      document.getElementById('latency-speed-tag').innerText = 'Blocked';
+      document.getElementById('latency-speed-tag').className = 'text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#000000] text-[#ffc53d] border border-[#ffc53d]/30';
+
+      document.getElementById('response-body-pre').textContent = `// Error: ${error.message}\n// Browser Cross-Origin Resource Sharing (CORS) restriction or unreachable host.`;
+      
+      const tbody = document.getElementById('response-headers-tbody');
+      tbody.innerHTML = '<tr><td colspan="2" class="py-2 text-[#888e90] text-center font-mono">Headers blocked by browser security (CORS)</td></tr>';
+
+      document.getElementById('rate-remaining').innerText = 'N/A';
+      document.getElementById('rate-limit').innerText = 'N/A';
+      document.getElementById('rate-reset').innerText = 'N/A';
+
+      document.getElementById('atmospheric-wash').className = 'glow-atmospheric glow-warning';
+      document.getElementById('status-code-badge').innerText = 'CORS / Network Error';
+      document.getElementById('status-pill-dot').className = 'w-2.5 h-2.5 rounded-full bg-[#ffc53d]';
+      document.getElementById('status-title-text').innerText = 'ब्राउझर CORS किंवा नेटवर्क मर्यादा';
+
+      if (!usedProxy) {
+        document.getElementById('retry-proxy-btn').classList.remove('hidden');
+        document.getElementById('retry-proxy-btn').classList.add('flex');
+        document.getElementById('diagnostic-marathi-explanation').innerText = 
+          'ब्राउझरच्या सुरक्षा नियमांमुळे (CORS Policy) थेट या API ला कॉल करणे ब्लॉक झाले आहे. OpenAI किंवा काही खाजगी सर्व्हर्स थेट वेब ब्राउझरवरून येणाऱ्या विनंत्या रोखतात.';
+        document.getElementById('diagnostic-recommendation-text').innerText = 
+          'वरील "Retry via Proxy" बटणावर क्लिक करा किंवा डाव्या बाजूला "Use Smart CORS Proxy" ऑन करून पुन्हा तपासा.';
+      } else {
+        document.getElementById('diagnostic-marathi-explanation').innerText = 
+          'प्रॉक्सीमार्फतही विनंती पूर्ण होऊ शकली नाही. कृपया तुमचे इंटरनेट कनेक्शन आणि एंडपॉईंट URL बरोबर असल्याची खात्री करा.';
+        document.getElementById('diagnostic-recommendation-text').innerText = 
+          'प्रोव्हायडर सर्व्हर सध्या बंद किंवा अनरीचेबल असू शकतो.';
+      }
+
+      saveToHistory({
+        provider: providerName,
+        status: 'CORS',
+        statusCategory: 'cors',
+        latency: 0,
+        maskedKey: maskKey(apiKey),
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+    }
+
+    function analyzeRateLimitHeaders(headers) {
+      let remaining = 'N/A';
+      let limit = 'N/A';
+      let reset = 'N/A';
+
+      headers.forEach(({ key, val }) => {
+        const k = key.toLowerCase();
+        if (k.includes('ratelimit-remaining') || k === 'x-ratelimit-remaining-requests') remaining = val;
+        if (k.includes('ratelimit-limit') || k === 'x-ratelimit-limit-requests') limit = val;
+        if (k.includes('ratelimit-reset') || k === 'retry-after') reset = val;
+      });
+
+      document.getElementById('rate-remaining').innerText = remaining;
+      document.getElementById('rate-limit').innerText = limit;
+      document.getElementById('rate-reset').innerText = reset;
+    }
+
+    function switchAppMode(mode) {
+      const singleContainer = document.getElementById('single-view-container');
+      const batchContainer = document.getElementById('batch-view-container');
+      const btnSingle = document.getElementById('mode-single-btn');
+      const btnBatch = document.getElementById('mode-batch-btn');
+
+      if (mode === 'single') {
+        singleContainer.classList.remove('hidden');
+        batchContainer.classList.add('hidden');
+        btnSingle.className = 'px-3 py-1 rounded-[6px] text-[#fcfdff] bg-[#000000] border border-[rgba(255,255,255,0.14)] transition';
+        btnBatch.className = 'px-3 py-1 rounded-[6px] text-[#888e90] hover:text-[#fcfdff] transition';
+      } else {
+        singleContainer.classList.add('hidden');
+        batchContainer.classList.remove('hidden');
+        btnBatch.className = 'px-3 py-1 rounded-[6px] text-[#fcfdff] bg-[#000000] border border-[rgba(255,255,255,0.14)] transition';
+        btnSingle.className = 'px-3 py-1 rounded-[6px] text-[#888e90] hover:text-[#fcfdff] transition';
+      }
+    }
+
+    function fillBatchExample() {
+      const textarea = document.getElementById('batch-keys-input');
+      textarea.value = `AIzaSyDUMMY_GEMINI_KEY_FAIL\nsk-ant-api03-DUMMY_ANTHROPIC_KEY\ngsk_DUMMY_GROQ_TEST_KEY\nghp_PUBLIC_TEST_TOKEN_EXAMPLE`;
+      document.getElementById('batch-count-indicator').innerText = '4 keys detected';
+    }
+
+    function clearBatch() {
+      document.getElementById('batch-keys-input').value = '';
+      document.getElementById('batch-count-indicator').innerText = '0 keys detected';
+      document.getElementById('batch-results-wrapper').classList.add('hidden');
+      batchAuditResults = [];
+    }
+
+    async function runBatchValidation() {
+      const text = document.getElementById('batch-keys-input').value.trim();
+      const keys = text.split('\n').map(k => k.trim()).filter(Boolean);
+
+      if (keys.length === 0) {
+        showToast('Please enter at least one key in the batch input', 'warning');
+        return;
+      }
+
+      const runBtn = document.getElementById('batch-run-btn');
+      const spinner = document.getElementById('batch-spinner');
+      const label = document.getElementById('batch-btn-label');
+      const tbody = document.getElementById('batch-results-tbody');
+      const resultsWrapper = document.getElementById('batch-results-wrapper');
+
+      runBtn.disabled = true;
+      spinner.classList.remove('hidden');
+      label.innerText = `Auditing ${keys.length} keys...`;
+      resultsWrapper.classList.remove('hidden');
+      tbody.innerHTML = '';
+      batchAuditResults = [];
+
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
+        let providerKey = 'custom';
+
+        // Auto-detect provider
+        if (key.startsWith('AIzaSy')) providerKey = 'gemini';
+        else if (key.startsWith('sk-ant-')) providerKey = 'anthropic';
+        else if (key.startsWith('gsk_')) providerKey = 'groq';
+        else if (key.startsWith('ghp_') || key.startsWith('github_pat_')) providerKey = 'github';
+        else if (key.startsWith('hf_')) providerKey = 'huggingface';
+        else if (key.startsWith('sk-')) providerKey = 'openai';
+
+        const p = PROVIDERS[providerKey];
+        const entropy = calculateShannonEntropy(key);
+
+        let finalUrl = p.endpoint;
+        const headers = { 'Accept': 'application/json' };
+        if (p.extraHeaders) Object.assign(headers, p.extraHeaders);
+
+        if (p.authType === 'query') {
+          const sep = finalUrl.includes('?') ? '&' : '?';
+          finalUrl = `${finalUrl}${sep}${p.authParamName}=${encodeURIComponent(key)}`;
+        } else if (p.authType === 'bearer') {
+          headers['Authorization'] = `Bearer ${key}`;
+        } else if (p.authType === 'header_custom') {
+          headers[p.authParamName] = key;
+        }
+
+        let statusText = 'Pending';
+        let latencyText = '-';
+        let verdict = 'Testing...';
+        let verdictColor = 'text-[#888e90]';
+
+        try {
+          // Use proxy if provider doesn't support direct browser CORS
+          const res = await executeSingleCall(finalUrl, p.method, headers, !p.supportsDirectCors);
+          statusText = `${res.status} ${res.statusText}`;
+          latencyText = `${res.latency}ms`;
+
+          if (res.status >= 200 && res.status < 300) {
+            verdict = 'Active & Valid';
+            verdictColor = 'text-[#11ff99]';
+          } else if (res.status === 401) {
+            verdict = 'Invalid / Expired';
+            verdictColor = 'text-[#ff2047]';
+          } else if (res.status === 403) {
+            verdict = 'Forbidden / Scope';
+            verdictColor = 'text-[#ffc53d]';
+          } else if (res.status === 429) {
+            verdict = 'Rate Limited';
+            verdictColor = 'text-[#ff801f]';
+          } else {
+            verdict = `Error ${res.status}`;
+            verdictColor = 'text-[#ff2047]';
+          }
+        } catch (err) {
+          statusText = 'CORS/Net Error';
+          latencyText = 'Fail';
+          verdict = 'Network Blocked';
+          verdictColor = 'text-[#ffc53d]';
+        }
+
+        const entry = {
+          index: i + 1,
+          maskedKey: maskKey(key),
+          provider: p.name,
+          entropy: entropy,
+          status: statusText,
+          latency: latencyText,
+          verdict: verdict
+        };
+        batchAuditResults.push(entry);
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="py-2.5 px-3 text-[#464a4d]">${entry.index}</td>
+          <td class="py-2.5 px-3 text-[#fcfdff]">${escapeHtml(entry.maskedKey)}</td>
+          <td class="py-2.5 px-3 text-[#3b9eff]">${escapeHtml(entry.provider)}</td>
+          <td class="py-2.5 px-3 text-[#888e90]">${entry.entropy}b</td>
+          <td class="py-2.5 px-3 text-[#a1a4a5]">${entry.status}</td>
+          <td class="py-2.5 px-3 text-[#888e90]">${entry.latency}</td>
+          <td class="py-2.5 px-3 ${verdictColor} font-medium">${entry.verdict}</td>
+        `;
+        tbody.appendChild(row);
+      }
+
+      runBtn.disabled = false;
+      spinner.classList.add('hidden');
+      label.innerText = 'Run Batch Validation';
+      showToast(`Batch of ${keys.length} keys validated successfully`, 'success');
+    }
+
+    function exportBatchCSV() {
+      if (batchAuditResults.length === 0) {
+        showToast('No batch results to export', 'warning');
+        return;
+      }
+      let csv = 'Index,MaskedKey,Provider,Entropy,Status,Latency,Verdict\n';
+      batchAuditResults.forEach(r => {
+        csv += `${r.index},"${r.maskedKey}","${r.provider}",${r.entropy},"${r.status}","${r.latency}","${r.verdict}"\n`;
+      });
+      copyTextToClipboard(csv, 'Batch CSV copied to clipboard');
+    }
+
+    function exportBatchJSON() {
+      if (batchAuditResults.length === 0) {
+        showToast('No batch results to export', 'warning');
+        return;
+      }
+      copyTextToClipboard(JSON.stringify(batchAuditResults, null, 2), 'Batch JSON copied to clipboard');
+    }
+
+    function exportMarkdownAuditReport() {
+      if (!lastValidationReport) {
+        showToast('Please validate an API key first', 'warning');
+        return;
+      }
+      const r = lastValidationReport;
+      const md = `### KeyVerify API Validation Audit
+- **Provider:** ${r.provider}
+- **Status:** HTTP ${r.status}
+- **Latency:** ${r.latency} ms
+- **Key (Masked):** \`${r.maskedKey}\`
+- **Timestamp:** ${r.timestamp}
+
+#### Diagnostics
+> ${r.marathiExplanation}
+
+**Engineering Recommendation:**
+${r.recommendation}
+
+*Generated via KeyVerify Pro Sandbox*`;
+
+      copyTextToClipboard(md, 'Markdown report copied to clipboard');
+    }
+
+    function retryWithProxy() {
+      document.getElementById('cors-proxy-toggle').checked = true;
+      handleValidateKey();
+    }
+
+    function setLoadingState(isLoading, title = 'Connecting to API Endpoint...', sub = 'Measuring DNS & HTTP response latency') {
+      const validateBtn = document.getElementById('validate-btn');
+      const spinner = document.getElementById('btn-spinner');
+      const btnLabel = document.getElementById('btn-label');
+      const emptyState = document.getElementById('status-empty-state');
+      const loadingState = document.getElementById('status-loading-state');
+      const resultContent = document.getElementById('status-result-content');
+
+      document.getElementById('loading-state-title').innerText = title;
+      document.getElementById('loading-state-sub').innerText = sub;
+
+      if (isLoading) {
+        validateBtn.disabled = true;
+        validateBtn.classList.add('opacity-75');
+        spinner.classList.remove('hidden');
+        btnLabel.innerText = 'Validating...';
+
+        emptyState.classList.add('hidden');
+        resultContent.classList.add('hidden');
+        loadingState.classList.remove('hidden');
+      } else {
+        validateBtn.disabled = false;
+        validateBtn.classList.remove('opacity-75');
+        spinner.classList.add('hidden');
+        btnLabel.innerText = 'Validate API Key';
+
+        loadingState.classList.add('hidden');
+      }
+    }
+
+    function maskKey(key) {
+      if (!key) return '';
+      if (key.length <= 8) return '****' + key.slice(-2);
+      return key.slice(0, 4) + '...' + key.slice(-4);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function saveToHistory(item) {
+      inMemoryHistory.unshift(item);
+      if (inMemoryHistory.length > 30) inMemoryHistory = inMemoryHistory.slice(0, 30);
+      updateHistoryCount();
+    }
+
+    function updateHistoryCount() {
+      document.getElementById('history-counter-badge').innerText = inMemoryHistory.length;
+    }
+
+    function renderHistoryList() {
+      const container = document.getElementById('history-list');
+      container.innerHTML = '';
+
+      if (inMemoryHistory.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 text-[#464a4d] text-xs font-mono">
+            No test entries logged in this session yet.
+          </div>
+        `;
+        return;
+      }
+
+      inMemoryHistory.forEach(h => {
+        const item = document.createElement('div');
+        item.className = 'p-3 rounded-[8px] bg-[#06060a] border border-[rgba(255,255,255,0.06)] text-xs font-mono flex items-center justify-between gap-3';
+        
+        let statusDotColor = 'bg-[#464a4d]';
+        if (h.statusCategory === 'valid') statusDotColor = 'bg-[#11ff99]';
+        else if (h.statusCategory === 'invalid' || h.statusCategory === 'server_error') statusDotColor = 'bg-[#ff2047]';
+        else if (h.statusCategory === 'forbidden' || h.statusCategory === 'ratelimit' || h.statusCategory === 'cors') statusDotColor = 'bg-[#ffc53d]';
+
+        item.innerHTML = `
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="w-1.5 h-1.5 rounded-full ${statusDotColor}"></span>
+              <span class="font-medium text-[#fcfdff] truncate">${escapeHtml(h.provider)}</span>
+              <span class="text-[10px] text-[#888e90] border border-[rgba(255,255,255,0.06)] px-1 rounded">${h.status}</span>
+            </div>
+            <div class="text-[11px] text-[#464a4d] mt-1 truncate">
+              ${escapeHtml(h.maskedKey)} &bull; ${h.latency}ms
+            </div>
+          </div>
+          <span class="text-[10px] text-[#464a4d] flex-shrink-0">${h.timestamp}</span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function switchInspectorTab(tab) {
+      activeInspectorTab = tab;
+      const tabs = ['response', 'headers', 'curl', 'python', 'node', 'env'];
+      tabs.forEach(t => {
+        const el = document.getElementById(`inspector-tab-${t}`);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (el && btn) {
+          if (t === tab) {
+            el.classList.remove('hidden');
+            btn.className = 'px-2.5 py-1 text-xs font-mono rounded-[6px] text-[#fcfdff] bg-[#101012] border border-[rgba(255,255,255,0.14)] whitespace-nowrap';
+          } else {
+            el.classList.add('hidden');
+            btn.className = 'px-2.5 py-1 text-xs font-mono rounded-[6px] text-[#888e90] hover:text-[#fcfdff] transition whitespace-nowrap';
+          }
+        }
+      });
+    }
+
+    function copyCurrentTabContent() {
+      if (activeInspectorTab === 'response') {
+        if (!currentRawResponse) {
+          showToast('No response content to copy', 'warning');
+          return;
+        }
+        copyTextToClipboard(currentRawResponse, 'Response JSON copied');
+      } else if (activeInspectorTab === 'headers') {
+        if (!currentHeadersString) {
+          showToast('No headers to copy', 'warning');
+          return;
+        }
+        copyTextToClipboard(currentHeadersString, 'Headers copied');
+      } else if (currentSnippets[activeInspectorTab]) {
+        copyTextToClipboard(currentSnippets[activeInspectorTab], `${activeInspectorTab.toUpperCase()} snippet copied`);
+      }
+    }
+
+    function loadDemoKey(type) {
+      if (type === 'gemini_invalid') {
+        selectProvider('gemini');
+        document.getElementById('api-key-input').value = 'AIzaSyDUMMY_TEST_KEY_THAT_WILL_FAIL_401';
+        document.getElementById('clear-input-btn').classList.remove('hidden');
+        document.getElementById('key-char-count').innerText = '39 chars';
+        updateEntropyIndicator('AIzaSyDUMMY_TEST_KEY_THAT_WILL_FAIL_401');
+        handleValidateKey();
+      } else if (type === 'github_public') {
+        selectProvider('custom');
+        document.getElementById('endpoint-url-input').value = 'https://api.github.com/zen';
+        document.getElementById('auth-type-select').value = 'bearer';
+        document.getElementById('api-key-input').value = 'public_no_auth_required';
+        document.getElementById('clear-input-btn').classList.remove('hidden');
+        document.getElementById('key-char-count').innerText = '23 chars';
+        updateEntropyIndicator('public_no_auth_required');
+        handleValidateKey();
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderProviderButtons();
+      selectProvider('gemini');
+      updateHistoryCount();
+      updateCodePreviews();
+
+      const apiKeyInput = document.getElementById('api-key-input');
+      const clearBtn = document.getElementById('clear-input-btn');
+      const eyeToggle = document.getElementById('toggle-key-visibility');
+      const charCounter = document.getElementById('key-char-count');
+
+      apiKeyInput.addEventListener('input', () => {
+        const val = apiKeyInput.value;
+        charCounter.innerText = `${val.length} chars`;
+        updateEntropyIndicator(val);
+
+        if (val.length > 0) {
+          clearBtn.classList.remove('hidden');
+          autoDetectProvider(val);
+        } else {
+          clearBtn.classList.add('hidden');
+        }
+        updateCodePreviews();
+      });
+
+      clearBtn.addEventListener('click', () => {
+        apiKeyInput.value = '';
+        clearBtn.classList.add('hidden');
+        charCounter.innerText = '0 chars';
+        updateEntropyIndicator('');
+        apiKeyInput.focus();
+        updateCodePreviews();
+      });
+
+      eyeToggle.addEventListener('click', () => {
+        isKeyVisible = !isKeyVisible;
+        apiKeyInput.type = isKeyVisible ? 'text' : 'password';
+        document.getElementById('eye-text').innerText = isKeyVisible ? 'Hide' : 'Show';
+      });
+
+      const customParamsBtn = document.getElementById('toggle-custom-params-btn');
+      const customParamsBody = document.getElementById('custom-params-body');
+      const customParamsArrow = document.getElementById('custom-params-arrow');
+      customParamsBtn.addEventListener('click', () => {
+        const isHidden = customParamsBody.classList.contains('hidden');
+        if (isHidden) {
+          customParamsBody.classList.remove('hidden');
+          customParamsArrow.classList.add('rotate-180');
+        } else {
+          customParamsBody.classList.add('hidden');
+          customParamsArrow.classList.remove('rotate-180');
+        }
+      });
+
+      document.getElementById('auth-type-select').addEventListener('change', () => {
+        updateAuthInputLabels();
+        updateCodePreviews();
+      });
+
+      document.getElementById('endpoint-url-input').addEventListener('input', updateCodePreviews);
+      document.getElementById('request-method').addEventListener('change', updateCodePreviews);
+      document.getElementById('cors-proxy-toggle').addEventListener('change', updateCodePreviews);
+      document.getElementById('proxy-service-select').addEventListener('change', updateCodePreviews);
+
+      // Reset
+      document.getElementById('reset-form-btn').addEventListener('click', () => {
+        apiKeyInput.value = '';
+        clearBtn.classList.add('hidden');
+        charCounter.innerText = '0 chars';
+        updateEntropyIndicator('');
+        document.getElementById('status-result-content').classList.add('hidden');
+        document.getElementById('status-empty-state').classList.remove('hidden');
+        document.getElementById('retry-proxy-btn').classList.add('hidden');
+        document.getElementById('discovered-capabilities-card').classList.add('hidden');
+        document.getElementById('pulse-benchmark-results').classList.add('hidden');
+        document.getElementById('atmospheric-wash').className = 'glow-atmospheric';
+        updateCodePreviews();
+        showToast('Form reset', 'info');
+      });
+
+      // Batch keys count detection
+      document.getElementById('batch-keys-input').addEventListener('input', (e) => {
+        const lines = e.target.value.split('\n').filter(k => k.trim()).length;
+        document.getElementById('batch-count-indicator').innerText = `${lines} keys detected`;
+      });
+
+      // History Drawer
+      const historyModal = document.getElementById('history-modal');
+      document.getElementById('open-history-btn').addEventListener('click', () => {
+        renderHistoryList();
+        historyModal.classList.remove('hidden');
+        historyModal.classList.add('flex');
+      });
+
+      const closeHistory = () => {
+        historyModal.classList.add('hidden');
+        historyModal.classList.remove('flex');
+      };
+
+      document.getElementById('close-history-btn').addEventListener('click', closeHistory);
+      document.getElementById('history-done-btn').addEventListener('click', closeHistory);
+
+      document.getElementById('clear-all-history-btn').addEventListener('click', () => {
+        inMemoryHistory = [];
+        renderHistoryList();
+        updateHistoryCount();
+        showToast('History cleared', 'success');
+      });
+    });
+  </script>
+</body>
+</html>

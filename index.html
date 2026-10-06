@@ -3,13 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>API Key Validator & Inspector</title>
+  <title>KeyVerify — API Key Validator & Inspector</title>
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts: Inter -->
+
+  <!-- Google Fonts: Instrument Serif (Editorial Domaine Display substitute), Inter (UI), Geist Mono / JetBrains Mono (Code) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <script>
     tailwind.config = {
@@ -17,17 +19,32 @@
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
+            serif: ['"Instrument Serif"', 'Georgia', 'serif'],
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['"Geist Mono"', 'JetBrains Mono', 'ui-monospace', 'monospace'],
           },
           colors: {
-            brand: {
-              50: '#eef2ff',
-              100: '#e0e7ff',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-            }
+            canvas: '#000000',
+            primary: '#fcfdff',
+            'primary-on': '#000000',
+            'surface-light': '#f1f7fe',
+            'surface-card': '#0a0a0c',
+            'surface-elevated': '#101012',
+            'surface-deep': '#06060a',
+            ink: '#fcfdff',
+            body: 'rgba(252, 253, 255, 0.86)',
+            charcoal: 'rgba(252, 253, 255, 0.70)',
+            mute: '#a1a4a5',
+            ash: '#888e90',
+            stone: '#464a4d',
+            'hairline': 'rgba(255, 255, 255, 0.06)',
+            'hairline-strong': 'rgba(255, 255, 255, 0.14)',
+            'divider-soft': 'rgba(255, 255, 255, 0.04)',
+            'accent-orange': '#ff801f',
+            'accent-yellow': '#ffc53d',
+            'accent-blue': '#3b9eff',
+            'accent-green': '#11ff99',
+            'accent-red': '#ff2047',
           }
         }
       }
@@ -35,401 +52,381 @@
   </script>
 
   <style>
-    /* Custom scrollbars */
+    /* Strict Resend system: true black canvas, zero drop shadows */
+    body {
+      background-color: #000000;
+      color: rgba(252, 253, 255, 0.86);
+      font-family: 'Inter', sans-serif;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .display-editorial {
+      font-family: 'Instrument Serif', Georgia, serif;
+      line-height: 1.0;
+      letter-spacing: -0.035em;
+      font-feature-settings: "ss01", "ss04", "ss11", "liga";
+    }
+
+    /* Atmospheric Wash / Section Glows (low opacity radial) */
+    .glow-atmospheric {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 1000px;
+      height: 480px;
+      pointer-events: none;
+      z-index: 0;
+      transition: background 0.6s ease;
+      background: radial-gradient(ellipse 70% 50% at 50% -10%, rgba(0, 117, 255, 0.14), transparent 70%);
+    }
+
+    .glow-success {
+      background: radial-gradient(ellipse 70% 50% at 50% -10%, rgba(34, 255, 153, 0.14), transparent 70%);
+    }
+
+    .glow-error {
+      background: radial-gradient(ellipse 70% 50% at 50% -10%, rgba(255, 32, 71, 0.16), transparent 70%);
+    }
+
+    .glow-warning {
+      background: radial-gradient(ellipse 70% 50% at 50% -10%, rgba(255, 128, 31, 0.15), transparent 70%);
+    }
+
+    /* Custom Hairline Scrollbars */
     ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
     }
     ::-webkit-scrollbar-track {
-      background: #0f172a;
+      background: #000000;
     }
     ::-webkit-scrollbar-thumb {
-      background: #334155;
+      background: rgba(255, 255, 255, 0.14);
       border-radius: 9999px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #475569;
-    }
-    .custom-glow {
-      box-shadow: 0 0 35px -5px rgba(99, 102, 241, 0.15);
+      background: rgba(255, 255, 255, 0.25);
     }
   </style>
 </head>
 
-<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-indigo-500 selection:text-white flex flex-col justify-between">
+<body class="min-h-screen flex flex-col justify-between selection:bg-white selection:text-black relative">
 
-  <!-- Notification Toast Container -->
+  <!-- Toast Notification Stack -->
   <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-  <!-- Custom Confirmation Modal (Never using alert/confirm) -->
-  <div id="confirm-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl">
-      <div class="flex items-center gap-3 mb-4 text-amber-400">
-        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-        </svg>
-        <h3 id="modal-title" class="text-lg font-bold text-white">खात्री करा</h3>
+  <!-- Custom Confirmation Dialog (No alert/confirm) -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#0a0a0c] border border-[rgba(255,255,255,0.14)] rounded-[12px] max-w-sm w-full p-6">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-2 h-2 rounded-full bg-[#ffc53d]"></span>
+        <h3 id="modal-title" class="text-sm font-semibold text-[#fcfdff]">खात्री करा</h3>
       </div>
-      <p id="modal-message" class="text-sm text-slate-300 mb-6">तुम्हाला नक्की ही क्रिया करायची आहे का?</p>
-      <div class="flex justify-end gap-3">
-        <button id="modal-btn-cancel" class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition">रद्द करा (Cancel)</button>
-        <button id="modal-btn-confirm" class="px-4 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-xl transition shadow-lg shadow-rose-900/30">होय, हटवा (Confirm)</button>
+      <p id="modal-message" class="text-xs text-[#a1a4a5] mb-6 leading-relaxed">तुम्हाला नक्की ही क्रिया करायची आहे का?</p>
+      <div class="flex justify-end gap-2">
+        <button id="modal-btn-cancel" class="px-3.5 py-1.5 text-xs text-[#a1a4a5] hover:text-[#fcfdff] bg-[#101012] border border-[rgba(255,255,255,0.06)] rounded-[8px] transition">रद्द करा</button>
+        <button id="modal-btn-confirm" class="px-3.5 py-1.5 text-xs font-medium text-[#fcfdff] bg-[#ff2047]/20 border border-[#ff2047]/40 hover:bg-[#ff2047]/30 rounded-[8px] transition">होय, पुसा</button>
       </div>
     </div>
   </div>
 
-  <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-30">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-          </svg>
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <h1 class="text-lg font-bold text-white tracking-tight">KeyVerify Pro</h1>
-            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">API Validator</span>
-          </div>
-          <p class="text-xs text-slate-400 hidden sm:block">API की चाचपणी, रेट लिमिट तपासणी आणि सर्व्हर त्रुटी विश्लेषक</p>
-        </div>
+  <!-- Top Navigation (64px, hairline divider, wordmark left, actions right) -->
+  <nav class="h-16 border-b border-[rgba(255,255,255,0.06)] bg-[#000000]/90 backdrop-blur sticky top-0 z-30 px-6 sm:px-10 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-7 h-7 rounded-[8px] bg-[#101012] border border-[rgba(255,255,255,0.14)] flex items-center justify-center text-[#fcfdff]">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+        </svg>
       </div>
-
-      <!-- Quick Actions / Badges -->
-      <div class="flex items-center gap-3">
-        <div class="hidden md:flex items-center gap-2 text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-3 py-1.5 rounded-xl">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>100% क्लायंट-साइड सुरक्षित (No Server Logging)</span>
-        </div>
-        <button id="open-history-btn" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-xs font-medium text-slate-200 transition">
-          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          <span>इतिहास (History)</span>
-          <span id="history-counter-badge" class="px-1.5 py-0.2 bg-slate-700 text-slate-300 rounded-full text-[10px] font-bold">0</span>
-        </button>
+      <div class="flex items-center gap-2.5">
+        <span class="text-sm font-semibold tracking-tight text-[#fcfdff]">KeyVerify</span>
+        <span class="text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded-full bg-[#101012] text-[#888e90] border border-[rgba(255,255,255,0.06)]">v1.2</span>
       </div>
     </div>
-  </header>
 
-  <!-- Main Content Layout -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1">
+    <!-- Right Controls: Status & History Drawer -->
+    <div class="flex items-center gap-3">
+      <div class="hidden md:flex items-center gap-2 text-xs text-[#a1a4a5] font-mono pr-2">
+        <span class="w-1.5 h-1.5 rounded-full bg-[#11ff99]"></span>
+        <span>Client-side only</span>
+      </div>
+      <button 
+        id="open-history-btn" 
+        class="h-9 px-3.5 rounded-[8px] bg-[#101012] hover:bg-[#151518] text-xs font-medium text-[#fcfdff] border border-[rgba(255,255,255,0.14)] transition flex items-center gap-2"
+      >
+        <svg class="w-3.5 h-3.5 text-[#888e90]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span>History</span>
+        <span id="history-counter-badge" class="px-1.5 py-0.2 rounded-full bg-[#000000] text-[#a1a4a5] border border-[rgba(255,255,255,0.06)] text-[10px] font-mono">0</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="w-full max-w-[1200px] mx-auto px-6 sm:px-10 py-12 sm:py-16 flex-1 relative">
     
-    <!-- Provider Quick Selector -->
-    <div class="mb-6">
-      <div class="flex items-center justify-between mb-3">
-        <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">
-          १. API प्रोव्हायडर निवडा (Select API Provider)
-        </label>
-        <span class="text-xs text-slate-500">किंवा स्वतःचा Custom Endpoint वापरा</span>
-      </div>
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5" id="providers-container">
-        <!-- Buttons injected dynamically -->
-      </div>
-    </div>
+    <!-- Atmospheric Radial Wash (dynamically tinted on test) -->
+    <div id="atmospheric-wash" class="glow-atmospheric"></div>
 
-    <!-- Main Grid: Input Form (Left) & Diagnostics Result (Right) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <!-- Editorial Hero Stripe -->
+    <header class="mb-14 sm:mb-20 text-left relative z-10">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#101012] border border-[rgba(255,255,255,0.06)] text-[11px] text-[#a1a4a5] mb-5 font-mono">
+        <span class="w-1.5 h-1.5 rounded-full bg-[#3b9eff]"></span>
+        <span>Zero Server Logging &bull; Direct Browser Execution</span>
+      </div>
+      <h1 class="display-editorial text-5xl sm:text-7xl lg:text-8xl font-normal text-[#fcfdff] max-w-4xl tracking-tight">
+        Keys validated.<br><span class="italic text-[#fcfdff]/90">Latency revealed.</span>
+      </h1>
+      <p class="mt-5 text-sm sm:text-base text-[#a1a4a5] max-w-xl font-normal leading-relaxed">
+        तुमची API Key त्वरित तपासा. Status Code (200, 401, 429, 500), लेटन्सी आणि HTTP हेडर्स एका क्लिकवर अचूक विश्लेषित करा.
+      </p>
+    </header>
+
+    <!-- Step 1: Provider Chips (Strict Resend sub-nav pill pattern) -->
+    <section class="mb-8 relative z-10">
+      <div class="flex items-center justify-between mb-3 text-xs text-[#888e90] font-mono">
+        <span>01 / SELECT PROVIDER</span>
+        <span id="provider-counter" class="text-[11px] text-[#464a4d]">6 PRESETS LOADED</span>
+      </div>
+      <div class="flex flex-wrap gap-2" id="providers-container">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- Two-Column Workflow: Form Left (5 cols) & Code Inspector Right (7 cols) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative z-10">
       
-      <section class="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl relative backdrop-blur-sm">
+      <!-- Input Panel: Surface Card (#0a0a0c) + 1px Hairline Strong border -->
+      <section class="lg:col-span-5 bg-[#0a0a0c] border border-[rgba(255,255,255,0.14)] rounded-[12px] p-6 sm:p-7">
         
-        <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-800/80">
-          <div class="flex items-center gap-2.5">
-            <span id="selected-provider-icon" class="text-2xl">🤖</span>
-            <div>
-              <h2 id="selected-provider-title" class="font-bold text-white text-base">Google Gemini AI</h2>
-              <p id="selected-provider-subtitle" class="text-xs text-slate-400">Generative Language API</p>
+        <div class="flex items-start justify-between pb-5 mb-5 border-b border-[rgba(255,255,255,0.06)]">
+          <div>
+            <div class="flex items-center gap-2">
+              <span id="provider-badge-icon" class="text-sm font-mono text-[#3b9eff]">●</span>
+              <h2 id="selected-provider-title" class="text-base font-medium text-[#fcfdff]">Google Gemini</h2>
             </div>
+            <p id="selected-provider-subtitle" class="text-xs text-[#888e90] mt-0.5">Generative Language API</p>
           </div>
-          <a id="provider-doc-link" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 underline underline-offset-4">
-            <span>की मिळवा (Get Key)</span>
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          <a id="provider-doc-link" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-xs text-[#3b9eff] hover:underline flex items-center gap-1 font-mono">
+            <span>Get key</span>
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
           </a>
         </div>
 
-        <form id="api-test-form" class="space-y-4" onsubmit="event.preventDefault(); handleValidateKey();">
+        <form id="api-test-form" class="space-y-5" onsubmit="event.preventDefault(); handleValidateKey();">
           
-          <!-- API Key Input -->
+          <!-- Key Input Field -->
           <div>
-            <div class="flex justify-between items-center mb-1.5">
-              <label for="api-key-input" class="text-xs font-semibold text-slate-300">
-                तुमची API Key प्रविष्ट करा <span class="text-rose-400">*</span>
+            <div class="flex justify-between items-center mb-2">
+              <label for="api-key-input" class="text-xs font-medium text-[#fcfdff]">
+                API Key <span class="text-[#ff2047]">*</span>
               </label>
-              <button type="button" id="toggle-key-visibility" class="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1">
+              <button type="button" id="toggle-key-visibility" class="text-xs text-[#888e90] hover:text-[#fcfdff] transition flex items-center gap-1.5 font-mono">
                 <svg id="eye-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                 </svg>
-                <span id="eye-text">दाखवा (Show)</span>
+                <span id="eye-text">Show</span>
               </button>
             </div>
+            
             <div class="relative">
               <input 
                 type="password" 
                 id="api-key-input" 
-                placeholder="उदा. AIzaSyD..., sk-proj-..., ghp_..." 
+                placeholder="AIzaSy..., sk-..., ghp_..." 
                 autocomplete="off"
                 spellcheck="false"
-                class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-3 text-sm font-mono text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition pr-10"
+                class="w-full bg-[#06060a] border border-[rgba(255,255,255,0.14)] focus:border-[#fcfdff] rounded-[8px] px-3.5 py-2.5 text-xs font-mono text-[#fcfdff] placeholder-[#464a4d] outline-none transition pr-10"
               />
-              <button type="button" id="clear-input-btn" class="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300 hidden" title="Clear">
+              <button type="button" id="clear-input-btn" class="absolute right-3 top-2.5 text-[#464a4d] hover:text-[#fcfdff] hidden transition" title="Clear">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
               </button>
             </div>
-            <p id="key-format-hint" class="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
-              <svg class="w-3 h-3 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              <span>सामान्यतः 'AIzaSy' ने सुरू होते.</span>
+            <p id="key-format-hint" class="text-[11px] text-[#888e90] mt-2 font-mono flex items-center gap-1.5">
+              <span>● Starts with AIzaSy...</span>
             </p>
           </div>
 
-          <!-- Advanced / Custom Endpoint Settings Collapsible -->
-          <div class="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/50">
+          <!-- Advanced Settings Collapsible -->
+          <div class="border border-[rgba(255,255,255,0.06)] rounded-[8px] bg-[#06060a] overflow-hidden">
             <button 
               type="button" 
               id="toggle-custom-params-btn"
-              class="w-full px-3.5 py-2.5 text-xs font-medium text-slate-400 hover:text-slate-200 flex items-center justify-between transition bg-slate-900/40"
+              class="w-full px-3.5 py-2.5 text-xs text-[#a1a4a5] hover:text-[#fcfdff] flex items-center justify-between transition"
             >
-              <div class="flex items-center gap-2">
-                <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
-                <span>Endpoint आणि विनंती सेटिंग्ज (Endpoint Settings)</span>
+              <div class="flex items-center gap-2 font-mono">
+                <span>Request Endpoint & Auth</span>
               </div>
-              <svg id="custom-params-arrow" class="w-4 h-4 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg id="custom-params-arrow" class="w-3.5 h-3.5 text-[#888e90] transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
               </svg>
             </button>
 
-            <div id="custom-params-body" class="p-3.5 space-y-3 hidden border-t border-slate-800">
-              <!-- HTTP Method & URL -->
+            <div id="custom-params-body" class="p-3.5 space-y-3.5 hidden border-t border-[rgba(255,255,255,0.06)]">
               <div>
-                <label class="text-[11px] font-medium text-slate-400 block mb-1">चाचणी Endpoint URL</label>
+                <label class="text-[11px] font-mono text-[#888e90] block mb-1">ENDPOINT URL</label>
                 <div class="flex gap-2">
-                  <select id="request-method" class="bg-slate-900 border border-slate-700 rounded-lg text-xs font-bold text-white px-2 py-1.5 focus:border-indigo-500 focus:outline-none">
+                  <select id="request-method" class="bg-[#101012] border border-[rgba(255,255,255,0.14)] text-xs font-mono text-[#fcfdff] px-2.5 py-1.5 rounded-[8px] outline-none">
                     <option value="GET">GET</option>
                     <option value="POST">POST</option>
                   </select>
                   <input 
                     type="text" 
                     id="endpoint-url-input" 
-                    class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:border-indigo-500 focus:outline-none"
+                    class="flex-1 bg-[#101012] border border-[rgba(255,255,255,0.14)] px-2.5 py-1.5 text-xs font-mono text-[#fcfdff] rounded-[8px] outline-none"
                   />
                 </div>
               </div>
 
-              <!-- Auth Mode -->
               <div class="grid grid-cols-2 gap-2">
                 <div>
-                  <label class="text-[11px] font-medium text-slate-400 block mb-1">Auth Type</label>
-                  <select id="auth-type-select" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs text-white px-2 py-1.5 focus:border-indigo-500 focus:outline-none">
+                  <label class="text-[11px] font-mono text-[#888e90] block mb-1">AUTH TYPE</label>
+                  <select id="auth-type-select" class="w-full bg-[#101012] border border-[rgba(255,255,255,0.14)] text-xs font-mono text-[#fcfdff] px-2.5 py-1.5 rounded-[8px] outline-none">
                     <option value="query">URL Query Param</option>
-                    <option value="bearer">Header: Bearer Token</option>
-                    <option value="header_custom">Header: Custom Header</option>
+                    <option value="bearer">Header: Bearer</option>
+                    <option value="header_custom">Header: Custom</option>
                   </select>
                 </div>
                 <div id="auth-param-name-wrapper">
-                  <label id="auth-param-label" class="text-[11px] font-medium text-slate-400 block mb-1">Parameter / Header Name</label>
+                  <label id="auth-param-label" class="text-[11px] font-mono text-[#888e90] block mb-1">PARAM NAME</label>
                   <input 
                     type="text" 
                     id="auth-param-name" 
                     value="key" 
-                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:border-indigo-500 focus:outline-none"
+                    class="w-full bg-[#101012] border border-[rgba(255,255,255,0.14)] px-2.5 py-1.5 text-xs font-mono text-[#fcfdff] rounded-[8px] outline-none"
                   />
                 </div>
               </div>
 
-              <!-- CORS Bypass Helper -->
+              <!-- CORS Bypass Checkbox -->
               <div class="pt-1 flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                  <input type="checkbox" id="cors-proxy-toggle" class="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer">
-                  <label for="cors-proxy-toggle" class="text-xs text-slate-300 cursor-pointer">
-                    CORS Proxy वापरा <span class="text-[10px] text-slate-500">(ब्राउझर CORS ब्लॉक झाल्यास)</span>
+                  <input type="checkbox" id="cors-proxy-toggle" class="rounded bg-[#101012] border-[rgba(255,255,255,0.14)] text-[#fcfdff] focus:ring-0 cursor-pointer">
+                  <label for="cors-proxy-toggle" class="text-xs text-[#a1a4a5] cursor-pointer">
+                    Enable CORS Proxy <span class="text-[#464a4d]">(if browser blocked)</span>
                   </label>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Submit Buttons -->
-          <div class="pt-2 flex flex-col gap-2">
+          <!-- Primary CTA Button (Signature white pill with black text - brightest pixel on canvas) -->
+          <div class="pt-2 flex flex-col gap-2.5">
             <button 
               type="submit" 
               id="validate-btn" 
-              class="w-full py-3.5 px-4 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 active:scale-[0.99] transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer"
+              class="w-full h-10 px-4 rounded-[8px] text-xs font-medium text-[#000000] bg-[#fcfdff] hover:bg-[#f1f7fe] active:bg-[#e2ebf5] transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <span id="btn-spinner" class="hidden">
-                <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <svg class="animate-spin h-3.5 w-3.5 text-black" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                 </svg>
               </span>
-              <svg id="btn-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-              </svg>
-              <span id="btn-label">API Key तपासा (Validate Key)</span>
+              <span id="btn-label">Validate API Key</span>
             </button>
 
             <button 
               type="button" 
               id="reset-form-btn" 
-              class="w-full py-2 px-3 text-xs text-slate-400 hover:text-slate-200 transition"
+              class="w-full h-8 text-xs text-[#888e90] hover:text-[#fcfdff] transition font-mono"
             >
-              रीसेट करा (Clear All)
+              Reset Inputs
             </button>
           </div>
+
         </form>
 
-        <!-- Privacy & Security Notice -->
-        <div class="mt-5 p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2.5">
-          <svg class="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-          </svg>
-          <div>
-            <span class="text-slate-200 font-medium">गोपनीयता हमी (Zero Leakage):</span> ही की थेट तुमच्या ब्राउझरमधून अधिकृत API कडे पाठवली जाते. ती कोणत्याही बाह्य सर्व्हरवर किंवा डेटाबेसमध्ये जतन केली जात नाही.
-          </div>
+        <!-- Zero-leakage Guarantee -->
+        <div class="mt-6 pt-4 border-t border-[rgba(255,255,255,0.06)] text-[11px] text-[#888e90] flex items-center gap-2 font-mono">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#11ff99]"></span>
+          <span>Zero Server Storage &bull; Direct Fetch Only</span>
         </div>
 
       </section>
 
-      <section class="lg:col-span-7 space-y-4">
+      <!-- Right Diagnostic & Code Window Section (Surface Deep #06060a + hairline) -->
+      <section class="lg:col-span-7 space-y-5">
         
-        <!-- Status Card (Initial / Result State) -->
-        <div id="status-card" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden backdrop-blur-sm transition-all duration-300">
+        <!-- Status Overview Card -->
+        <div id="status-card" class="bg-[#0a0a0c] border border-[rgba(255,255,255,0.14)] rounded-[12px] p-6 relative overflow-hidden transition-all duration-300">
           
-          <!-- Default Empty State -->
-          <div id="status-empty-state" class="text-center py-12 px-4">
-            <div class="w-16 h-16 rounded-2xl bg-slate-800/80 border border-slate-700/60 mx-auto flex items-center justify-center text-slate-400 mb-4">
-              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          <!-- Idle Empty State -->
+          <div id="status-empty-state" class="py-10 text-center">
+            <div class="w-9 h-9 rounded-full bg-[#101012] border border-[rgba(255,255,255,0.06)] mx-auto flex items-center justify-center text-[#888e90] mb-3">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
               </svg>
             </div>
-            <h3 class="text-base font-bold text-white mb-1">API Key चाचणीसाठी तयार आहे</h3>
-            <p class="text-xs text-slate-400 max-w-sm mx-auto">
-              डाव्या बाजूला तुमची API Key टाका आणि "Validate Key" बटण दाबा. स्टेटस कोड (200, 401, 429, 500), लेटन्सी आणि तपशील येथे दिसतील.
+            <h3 class="text-sm font-medium text-[#fcfdff] mb-1">Awaiting Request</h3>
+            <p class="text-xs text-[#888e90] max-w-sm mx-auto font-mono">
+              Provide your API key and press "Validate API Key". Detailed HTTP code, latency and response headers will display here.
             </p>
           </div>
 
-          <!-- Active Loading State -->
-          <div id="status-loading-state" class="text-center py-12 px-4 hidden">
-            <div class="relative w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-              <div class="absolute inset-0 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin"></div>
-              <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-              </svg>
-            </div>
-            <h3 class="text-base font-bold text-white mb-1">API कडे विनंती पाठवत आहे...</h3>
-            <p class="text-xs text-indigo-300/80 animate-pulse font-mono">Connecting to endpoint & measuring response time</p>
+          <!-- Loading State -->
+          <div id="status-loading-state" class="py-12 text-center hidden">
+            <div class="w-8 h-8 rounded-full border-2 border-[rgba(255,255,255,0.14)] border-t-[#fcfdff] animate-spin mx-auto mb-4"></div>
+            <h3 class="text-sm font-medium text-[#fcfdff] mb-1">Connecting to Endpoint...</h3>
+            <p class="text-xs text-[#888e90] font-mono">Measuring DNS & HTTP response latency</p>
           </div>
 
-          <!-- Result Content Container -->
-          <div id="status-result-content" class="hidden space-y-5">
+          <!-- Active Result Content -->
+          <div id="status-result-content" class="hidden space-y-4">
             
-            <!-- Result Banner -->
-            <div id="result-banner" class="rounded-xl p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <!-- Result Banner (Clean Resend style) -->
+            <div id="result-banner" class="rounded-[8px] p-4 border border-[rgba(255,255,255,0.14)] bg-[#101012] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div class="flex items-center gap-3">
-                <div id="status-icon-box" class="w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0">
-                  <!-- Injected Icon -->
-                </div>
+                <div id="status-pill-dot" class="w-2.5 h-2.5 rounded-full bg-[#11ff99]"></div>
                 <div>
                   <div class="flex items-center gap-2">
-                    <span id="status-code-badge" class="font-mono text-xs font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                    <span id="status-code-badge" class="font-mono text-xs font-semibold px-2 py-0.5 rounded-[4px] bg-[#000000] text-[#fcfdff] border border-[rgba(255,255,255,0.14)]">
                       200 OK
                     </span>
-                    <span id="status-latency-badge" class="text-xs text-slate-400 font-mono flex items-center gap-1">
-                      <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                      <span id="latency-val">120 ms</span>
-                    </span>
+                    <span id="latency-val" class="font-mono text-xs text-[#888e90]">120 ms</span>
                   </div>
-                  <h3 id="status-title-text" class="text-base font-bold text-white mt-1">वैध API Key (Valid & Active)</h3>
+                  <h3 id="status-title-text" class="text-sm font-medium text-[#fcfdff] mt-1">Valid & Active Key</h3>
                 </div>
               </div>
 
-              <!-- Re-test action -->
-              <button onclick="handleValidateKey()" class="self-start sm:self-auto px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition flex items-center gap-1.5 border border-slate-700">
+              <button onclick="handleValidateKey()" class="px-3 py-1.5 rounded-[8px] bg-[#000000] hover:bg-[#101012] text-xs font-mono text-[#a1a4a5] hover:text-[#fcfdff] transition border border-[rgba(255,255,255,0.14)] flex items-center gap-1.5 self-start sm:self-auto">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                <span>पुन्हा चाचणी घ्या (Re-check)</span>
+                <span>Re-test</span>
               </button>
             </div>
 
             <!-- Marathi Diagnostic Explanation Card -->
-            <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4">
-              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
-                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                विश्लेषण आणि उपाय (Diagnostic Explanation)
-              </h4>
-              <p id="diagnostic-marathi-explanation" class="text-sm text-slate-200 leading-relaxed">
-                <!-- Marathi dynamic text -->
-              </p>
-              <div id="diagnostic-recommendation-box" class="mt-3 p-3 rounded-lg bg-indigo-950/30 border border-indigo-800/40 text-xs text-indigo-200 flex items-start gap-2">
-                <span class="font-bold text-indigo-400">💡 टीप:</span>
+            <div class="bg-[#06060a] border border-[rgba(255,255,255,0.06)] rounded-[8px] p-4 text-xs">
+              <div class="text-[11px] font-mono uppercase tracking-wider text-[#888e90] mb-2">
+                विश्लेषण व मार्गदर्शन (DIAGNOSTICS & ADVICE)
+              </div>
+              <p id="diagnostic-marathi-explanation" class="text-[#fcfdff]/90 leading-relaxed font-sans mb-2"></p>
+              <div class="pt-2 border-t border-[rgba(255,255,255,0.04)] text-[#a1a4a5] flex items-start gap-2">
+                <span class="text-[#3b9eff] font-mono">Tip:</span>
                 <span id="diagnostic-recommendation-text"></span>
               </div>
             </div>
 
-            <!-- Rate Limit & Quota Headers Overview -->
-            <div id="ratelimit-section" class="bg-slate-950/60 border border-slate-800 rounded-xl p-4">
-              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
-                <span class="flex items-center gap-1.5">
-                  <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  रेट लिमिट माहिती (Rate Limit Metrics)
-                </span>
-                <span id="ratelimit-detected-badge" class="text-[10px] px-2 py-0.5 rounded font-normal bg-slate-800 text-slate-400">Headers Read</span>
-              </h4>
-              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs font-mono">
-                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                  <div class="text-[10px] text-slate-500 uppercase font-sans">Remaining Calls</div>
-                  <div id="rate-remaining" class="text-sm font-bold text-slate-200 mt-0.5">N/A</div>
-                </div>
-                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                  <div class="text-[10px] text-slate-500 uppercase font-sans">Total Limit</div>
-                  <div id="rate-limit" class="text-sm font-bold text-slate-200 mt-0.5">N/A</div>
-                </div>
-                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 col-span-2 sm:col-span-1">
-                  <div class="text-[10px] text-slate-500 uppercase font-sans">Reset Time / Retry</div>
-                  <div id="rate-reset" class="text-sm font-bold text-slate-200 mt-0.5">N/A</div>
-                </div>
+            <!-- Rate Limit Metrics Grid (3 hairline blocks) -->
+            <div class="grid grid-cols-3 gap-2">
+              <div class="p-3 rounded-[8px] bg-[#06060a] border border-[rgba(255,255,255,0.06)]">
+                <div class="text-[10px] font-mono text-[#888e90] uppercase">REMAINING</div>
+                <div id="rate-remaining" class="text-sm font-mono font-medium text-[#fcfdff] mt-1">N/A</div>
               </div>
-            </div>
-
-            <!-- Response Inspector Tabs -->
-            <div class="border border-slate-800 rounded-xl overflow-hidden bg-slate-950">
-              <div class="flex items-center justify-between border-b border-slate-800 px-3 bg-slate-900/60">
-                <div class="flex gap-1">
-                  <button id="tab-btn-response" onclick="switchInspectorTab('response')" class="px-3 py-2 text-xs font-medium border-b-2 border-indigo-500 text-indigo-400 transition">
-                    सर्व्हर Response (JSON)
-                  </button>
-                  <button id="tab-btn-headers" onclick="switchInspectorTab('headers')" class="px-3 py-2 text-xs font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition">
-                    HTTP Headers
-                  </button>
-                </div>
-                <button onclick="copyCurrentTabContent()" class="text-xs text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition flex items-center gap-1">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                  <span>कॉपी (Copy)</span>
-                </button>
+              <div class="p-3 rounded-[8px] bg-[#06060a] border border-[rgba(255,255,255,0.06)]">
+                <div class="text-[10px] font-mono text-[#888e90] uppercase">LIMIT</div>
+                <div id="rate-limit" class="text-sm font-mono font-medium text-[#fcfdff] mt-1">N/A</div>
               </div>
-
-              <!-- Tab 1: Response Body -->
-              <div id="inspector-tab-response" class="p-3">
-                <pre id="response-body-pre" class="font-mono text-xs text-slate-300 overflow-x-auto max-h-72 p-2 bg-slate-900/80 rounded-lg selection:bg-indigo-900 leading-relaxed"></pre>
-              </div>
-
-              <!-- Tab 2: Response Headers -->
-              <div id="inspector-tab-headers" class="p-3 hidden">
-                <div class="overflow-x-auto max-h-72">
-                  <table class="w-full text-left text-xs font-mono">
-                    <thead>
-                      <tr class="text-slate-500 border-b border-slate-800">
-                        <th class="py-1.5 px-2">Header Name</th>
-                        <th class="py-1.5 px-2">Header Value</th>
-                      </tr>
-                    </thead>
-                    <tbody id="response-headers-tbody" class="divide-y divide-slate-800/60 text-slate-300">
-                    </tbody>
-                  </table>
-                </div>
+              <div class="p-3 rounded-[8px] bg-[#06060a] border border-[rgba(255,255,255,0.06)]">
+                <div class="text-[10px] font-mono text-[#888e90] uppercase">RESET</div>
+                <div id="rate-reset" class="text-sm font-mono font-medium text-[#fcfdff] mt-1">N/A</div>
               </div>
             </div>
 
@@ -437,158 +434,217 @@
 
         </div>
 
-        <!-- Quick Reference Guide for API Status Codes -->
-        <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 text-xs text-slate-400">
-          <div class="font-bold text-slate-300 mb-2 flex items-center gap-1.5">
-            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <span>महत्त्वाचे API स्टेटस कोड (Quick Status Reference):</span>
+        <!-- Resend Signature Component: Code Window ({component.code-window}) -->
+        <div class="bg-[#06060a] border border-[rgba(255,255,255,0.14)] rounded-[12px] overflow-hidden">
+          
+          <!-- Code Window Header: Traffic light dots & tab strip -->
+          <div class="h-10 px-4 border-b border-[rgba(255,255,255,0.06)] flex items-center justify-between bg-[#0a0a0c]">
+            <!-- Traffic Lights -->
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-[#ff2047]"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-[#ffc53d]"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-[#11ff99]"></span>
+            </div>
+
+            <!-- Code Tabs -->
+            <div class="flex items-center gap-1">
+              <button 
+                id="tab-btn-response" 
+                onclick="switchInspectorTab('response')"
+                class="px-2.5 py-1 text-xs font-mono rounded-[6px] text-[#fcfdff] bg-[#101012] border border-[rgba(255,255,255,0.14)]"
+              >
+                Response JSON
+              </button>
+              <button 
+                id="tab-btn-headers" 
+                onclick="switchInspectorTab('headers')"
+                class="px-2.5 py-1 text-xs font-mono rounded-[6px] text-[#888e90] hover:text-[#fcfdff] transition"
+              >
+                Headers
+              </button>
+              <button 
+                id="tab-btn-curl" 
+                onclick="switchInspectorTab('curl')"
+                class="px-2.5 py-1 text-xs font-mono rounded-[6px] text-[#888e90] hover:text-[#fcfdff] transition"
+              >
+                cURL
+              </button>
+            </div>
+
+            <!-- Copy action -->
+            <button onclick="copyCurrentTabContent()" class="text-xs text-[#888e90] hover:text-[#fcfdff] transition flex items-center gap-1 font-mono">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              <span>Copy</span>
+            </button>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-            <div class="p-2 rounded bg-slate-950/60 border border-slate-800/60">
-              <span class="text-emerald-400 font-bold font-mono">200 OK:</span> API Key चालू आहे आणि विनंती यशस्वी झाली.
+
+          <!-- Code Well Body: Geist Mono 13px -->
+          <div class="p-4">
+            
+            <!-- Tab 1: Response Body -->
+            <div id="inspector-tab-response">
+              <pre id="response-body-pre" class="font-mono text-[13px] text-[#a1a4a5] overflow-x-auto max-h-72 leading-relaxed selection:bg-white selection:text-black">// Awaiting execution. Press "Validate API Key" to initiate call.</pre>
             </div>
-            <div class="p-2 rounded bg-slate-950/60 border border-slate-800/60">
-              <span class="text-rose-400 font-bold font-mono">401 Unauthorized:</span> अवैध, खोटी किंवा कालबाह्य (expired) API Key.
+
+            <!-- Tab 2: Response Headers -->
+            <div id="inspector-tab-headers" class="hidden">
+              <div class="overflow-x-auto max-h-72 font-mono text-[12px]">
+                <table class="w-full text-left">
+                  <thead>
+                    <tr class="text-[#888e90] border-b border-[rgba(255,255,255,0.06)]">
+                      <th class="py-1 px-2 font-medium">Header</th>
+                      <th class="py-1 px-2 font-medium">Value</th>
+                    </tr>
+                  </thead>
+                  <tbody id="response-headers-tbody" class="divide-y divide-[rgba(255,255,255,0.04)] text-[#a1a4a5]">
+                    <tr><td colspan="2" class="py-3 text-center text-[#464a4d]">No headers inspected yet</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div class="p-2 rounded bg-slate-950/60 border border-slate-800/60">
-              <span class="text-amber-400 font-bold font-mono">403 Forbidden:</span> परवानगी नाही (Billing, Scope किंवा देश निर्बंध).
+
+            <!-- Tab 3: Generated cURL snippet -->
+            <div id="inspector-tab-curl" class="hidden">
+              <pre id="curl-preview-pre" class="font-mono text-[13px] text-[#3b9eff] overflow-x-auto max-h-72 leading-relaxed selection:bg-white selection:text-black"></pre>
             </div>
-            <div class="p-2 rounded bg-slate-950/60 border border-slate-800/60">
-              <span class="text-purple-400 font-bold font-mono">429 Rate Limit:</span> विनंत्यांची मर्यादा ओलांडली किंवा मोफत कोटा संपला.
-            </div>
-            <div class="p-2 rounded bg-slate-950/60 border border-slate-800/60">
-              <span class="text-rose-500 font-bold font-mono">500/503 Error:</span> सर्व्हर डाऊन किंवा API कंपनीकडील तात्पुरता बिघाड.
-            </div>
-            <div class="p-2 rounded bg-slate-950/60 border border-slate-800/60">
-              <span class="text-blue-400 font-bold font-mono">CORS / Network:</span> ब्राउझर सुरक्षा निर्बंध (Proxy चेकबॉक्स वापरा).
-            </div>
+
+          </div>
+        </div>
+
+        <!-- Semantic Reference Footer Guide -->
+        <div class="border border-[rgba(255,255,255,0.06)] rounded-[8px] p-4 bg-[#0a0a0c] text-[11px] font-mono text-[#888e90]">
+          <div class="text-[#fcfdff] font-medium mb-2 uppercase tracking-wider text-[10px]">
+            HTTP Status Code Reference
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div><span class="text-[#11ff99]">200 OK:</span> Valid key</div>
+            <div><span class="text-[#ff2047]">401:</span> Unauthorized</div>
+            <div><span class="text-[#ffc53d]">403:</span> Scope / Billing</div>
+            <div><span class="text-[#ff801f]">429:</span> Rate limit</div>
           </div>
         </div>
 
       </section>
-    </div>
 
-    <!-- History Drawer / Modal -->
-    <div id="history-modal" class="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm hidden items-center justify-end p-0">
-      <div class="bg-slate-900 border-l border-slate-800 w-full max-w-md h-full flex flex-col p-6 shadow-2xl overflow-hidden animate-slide-left">
-        <div class="flex items-center justify-between pb-4 border-b border-slate-800">
-          <div class="flex items-center gap-2">
-            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <h3 class="font-bold text-white text-base">चाचणी इतिहास (Validation Log)</h3>
-          </div>
-          <button id="close-history-btn" class="p-1 rounded-lg text-slate-400 hover:text-white bg-slate-800 transition">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        </div>
-
-        <div class="py-3 flex items-center justify-between text-xs text-slate-400 border-b border-slate-800/60">
-          <span>सुरक्षेसाठी की चे केवळ शेवटचे अक्षरे दिसतात.</span>
-          <button id="clear-all-history-btn" class="text-rose-400 hover:text-rose-300 font-medium">इतिहास पुसा (Clear)</button>
-        </div>
-
-        <!-- History List Scrollable -->
-        <div id="history-list" class="flex-1 overflow-y-auto py-3 space-y-2.5">
-          <!-- Injected via JS -->
-        </div>
-
-        <div class="pt-4 border-t border-slate-800">
-          <button id="history-done-btn" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition">
-            बंद करा (Close)
-          </button>
-        </div>
-      </div>
     </div>
 
   </main>
 
-  <footer class="border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-500">
-    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-      <p>KeyVerify Pro &bull; सुरक्षित आणि वेगवान API Key विश्लेषक साधन</p>
-      <p class="text-[11px] text-slate-600">Client-Side Diagnostic Engine &bull; Zero Server Side Storage</p>
+  <!-- History Drawer (Resend slide-in styling) -->
+  <div id="history-modal" class="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm hidden items-center justify-end p-0">
+    <div class="bg-[#0a0a0c] border-l border-[rgba(255,255,255,0.14)] w-full max-w-md h-full flex flex-col p-6 shadow-none">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-[rgba(255,255,255,0.06)]">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-[#fcfdff]"></span>
+          <h3 class="font-medium text-[#fcfdff] text-sm">Validation History</h3>
+        </div>
+        <button id="close-history-btn" class="p-1 rounded-[6px] text-[#888e90] hover:text-[#fcfdff] bg-[#101012] transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="py-3 flex items-center justify-between text-xs font-mono text-[#888e90] border-b border-[rgba(255,255,255,0.04)]">
+        <span>Keys masked for security</span>
+        <button id="clear-all-history-btn" class="text-[#ff2047] hover:underline">Clear all</button>
+      </div>
+
+      <!-- History List -->
+      <div id="history-list" class="flex-1 overflow-y-auto py-3 space-y-2">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div class="pt-4 border-t border-[rgba(255,255,255,0.06)]">
+        <button id="history-done-btn" class="w-full h-9 bg-[#101012] hover:bg-[#151518] text-[#fcfdff] text-xs font-medium rounded-[8px] border border-[rgba(255,255,255,0.14)] transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer (Pure black, hairline divider) -->
+  <footer class="border-t border-[rgba(255,255,255,0.06)] bg-[#000000] py-8 text-xs text-[#888e90] font-mono">
+    <div class="max-w-[1200px] mx-auto px-6 sm:px-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-[#11ff99]"></span>
+        <span class="text-[#fcfdff]">KeyVerify</span>
+        <span class="text-[#464a4d]">&bull;</span>
+        <span>Developer Key Inspector</span>
+      </div>
+      <div>
+        Direct browser execution &bull; 100% Private
+      </div>
     </div>
   </footer>
 
-  <!-- JAVASCRIPT LOGIC -->
   <script>
-    // Provider Presets Definition
+    // Provider definitions with Resend editorial styling
     const PROVIDERS = {
       gemini: {
         id: 'gemini',
         name: 'Google Gemini',
         category: 'Generative AI',
-        icon: '✨',
         docUrl: 'https://aistudio.google.com/app/apikey',
-        formatHint: "सामान्यतः 'AIzaSy' ने सुरू होते (Google AI Studio Key).",
+        formatHint: "Starts with 'AIzaSy' (Google AI Studio Key).",
         method: 'GET',
         endpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
-        authType: 'query', // key is passed in URL ?key=
-        authParamName: 'key',
-        supportsCors: true
+        authType: 'query',
+        authParamName: 'key'
       },
       openai: {
         id: 'openai',
-        name: 'OpenAI (GPT)',
-        category: 'Language Models',
-        icon: '🧠',
+        name: 'OpenAI',
+        category: 'LLM Platform',
         docUrl: 'https://platform.openai.com/api-keys',
-        formatHint: "सामान्यतः 'sk-...' ने सुरू होते.",
+        formatHint: "Starts with 'sk-...' token.",
         method: 'GET',
         endpoint: 'https://api.openai.com/v1/models',
         authType: 'bearer',
-        authParamName: 'Authorization',
-        supportsCors: true
+        authParamName: 'Authorization'
+      },
+      anthropic: {
+        id: 'anthropic',
+        name: 'Anthropic Claude',
+        category: 'AI Models',
+        docUrl: 'https://console.anthropic.com/settings/keys',
+        formatHint: "Starts with 'sk-ant-api03-...'",
+        method: 'GET',
+        endpoint: 'https://api.anthropic.com/v1/models',
+        authType: 'header_custom',
+        authParamName: 'x-api-key'
       },
       github: {
         id: 'github',
-        name: 'GitHub Token',
-        category: 'Developer Platform',
-        icon: '🐙',
+        name: 'GitHub',
+        category: 'Developer API',
         docUrl: 'https://github.com/settings/tokens',
-        formatHint: "उदा. 'ghp_...', 'github_pat_...' टोकन.",
+        formatHint: "Personal access token 'ghp_...' or 'github_pat_...'",
         method: 'GET',
         endpoint: 'https://api.github.com/user',
         authType: 'bearer',
-        authParamName: 'Authorization',
-        supportsCors: true
+        authParamName: 'Authorization'
       },
       huggingface: {
         id: 'huggingface',
         name: 'Hugging Face',
-        category: 'ML Models & Hub',
-        icon: '🤗',
+        category: 'Hub & Inference',
         docUrl: 'https://huggingface.co/settings/tokens',
-        formatHint: "सामान्यतः 'hf_...' ने सुरू होते.",
+        formatHint: "Starts with 'hf_...'",
         method: 'GET',
         endpoint: 'https://huggingface.co/api/whoami-v2',
         authType: 'bearer',
-        authParamName: 'Authorization',
-        supportsCors: true
-      },
-      openweather: {
-        id: 'openweather',
-        name: 'OpenWeather',
-        category: 'Weather Service',
-        icon: '☀️',
-        docUrl: 'https://home.openweathermap.org/api_keys',
-        formatHint: '३२-अंकी हेक्स स्ट्रिंग (Hex string key).',
-        method: 'GET',
-        endpoint: 'https://api.openweathermap.org/data/2.5/weather?q=London',
-        authType: 'query',
-        authParamName: 'appid',
-        supportsCors: true
+        authParamName: 'Authorization'
       },
       custom: {
         id: 'custom',
         name: 'Custom Endpoint',
         category: 'Any REST API',
-        icon: '⚙️️',
         docUrl: '#',
-        formatHint: 'कोणतीही कस्टम की किंवा टोकन टाका.',
+        formatHint: 'Custom REST API token or key.',
         method: 'GET',
         endpoint: 'https://httpbin.org/get',
         authType: 'bearer',
-        authParamName: 'Authorization',
-        supportsCors: false
+        authParamName: 'Authorization'
       }
     };
 
@@ -597,39 +653,36 @@
     let isKeyVisible = false;
     let currentRawResponse = '';
     let currentHeadersString = '';
+    let currentCurlSnippet = '';
     let activeInspectorTab = 'response';
 
-    // Helper: Toast Notifications (No alert)
     function showToast(message, type = 'info') {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
       
-      const colors = {
-        success: 'bg-emerald-900/90 border-emerald-700 text-emerald-200',
-        error: 'bg-rose-900/90 border-rose-700 text-rose-200',
-        warning: 'bg-amber-900/90 border-amber-700 text-amber-200',
-        info: 'bg-slate-800/90 border-slate-700 text-slate-200'
+      const dotColors = {
+        success: 'bg-[#11ff99]',
+        error: 'bg-[#ff2047]',
+        warning: 'bg-[#ffc53d]',
+        info: 'bg-[#3b9eff]'
       };
 
-      toast.className = `px-4 py-3 rounded-xl border shadow-xl text-xs font-medium backdrop-blur-md transition-all duration-300 transform translate-x-full pointer-events-auto flex items-center gap-2 max-w-sm ${colors[type] || colors.info}`;
+      toast.className = `px-3.5 py-2.5 rounded-[8px] bg-[#0a0a0c] border border-[rgba(255,255,255,0.14)] text-xs font-mono text-[#fcfdff] shadow-none flex items-center gap-2 transform translate-x-full transition-all duration-300 pointer-events-auto max-w-sm`;
       toast.innerHTML = `
+        <span class="w-1.5 h-1.5 rounded-full ${dotColors[type] || dotColors.info}"></span>
         <span>${message}</span>
       `;
 
       container.appendChild(toast);
-      // Animate in
-      requestAnimationFrame(() => {
-        toast.classList.remove('translate-x-full');
-      });
+      requestAnimationFrame(() => toast.classList.remove('translate-x-full'));
 
       setTimeout(() => {
         toast.classList.add('opacity-0', 'translate-x-full');
         setTimeout(() => toast.remove(), 300);
-      }, 3500);
+      }, 3200);
     }
 
-    // Helper: Safe Copy to Clipboard (using execCommand for iframe compatibility)
-    function copyTextToClipboard(text, successMsg = 'क्लिपबोर्डवर कॉपी झाले!') {
+    function copyTextToClipboard(text, successMsg = 'Copied to clipboard') {
       try {
         const textarea = document.createElement('textarea');
         textarea.value = text;
@@ -646,14 +699,14 @@
         if (successful) {
           showToast(successMsg, 'success');
         } else {
-          showToast('कॉपी करणे शक्य झाले नाही', 'error');
+          showToast('Copying failed', 'error');
         }
       } catch (err) {
-        showToast('कॉपी त्रुटी आली', 'error');
+        showToast('Clipboard error', 'error');
       }
     }
 
-    // Custom Modal Trigger
+    // Modal Confirmation Dialog
     function openConfirmModal(title, message, onConfirm) {
       const modal = document.getElementById('confirm-modal');
       const titleEl = document.getElementById('modal-title');
@@ -680,7 +733,6 @@
       };
     }
 
-    // Render Provider Buttons
     function renderProviderButtons() {
       const container = document.getElementById('providers-container');
       container.innerHTML = '';
@@ -690,35 +742,26 @@
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.onclick = () => selectProvider(p.id);
-        btn.className = `p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between ${
+        
+        btn.className = `px-3 py-1.5 rounded-[8px] text-xs font-mono transition-all flex items-center gap-2 border ${
           isSelected 
-            ? 'bg-indigo-600/20 border-indigo-500 text-white shadow-lg shadow-indigo-500/10' 
-            : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white'
+            ? 'bg-[#101012] border-[rgba(255,255,255,0.4)] text-[#fcfdff]' 
+            : 'bg-[#000000] border-[rgba(255,255,255,0.06)] text-[#888e90] hover:text-[#fcfdff] hover:border-[rgba(255,255,255,0.14)]'
         }`;
 
         btn.innerHTML = `
-          <div class="flex items-center justify-between w-full mb-1">
-            <span class="text-xl">${p.icon}</span>
-            ${isSelected ? '<span class="w-2 h-2 rounded-full bg-indigo-400"></span>' : ''}
-          </div>
-          <div>
-            <div class="font-bold text-xs tracking-tight truncate">${p.name}</div>
-            <div class="text-[10px] text-slate-500 truncate">${p.category}</div>
-          </div>
+          <span class="w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-[#3b9eff]' : 'bg-[#464a4d]'}"></span>
+          <span>${p.name}</span>
         `;
         container.appendChild(btn);
       });
     }
 
-    // Select Provider
     function selectProvider(providerId) {
       currentProviderId = providerId;
       const p = PROVIDERS[providerId];
-
       renderProviderButtons();
 
-      // Update Form Headers
-      document.getElementById('selected-provider-icon').innerText = p.icon;
       document.getElementById('selected-provider-title').innerText = p.name;
       document.getElementById('selected-provider-subtitle').innerText = p.category;
       
@@ -730,18 +773,13 @@
         docLink.classList.add('hidden');
       }
 
-      document.getElementById('key-format-hint').innerHTML = `
-        <svg class="w-3 h-3 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <span>${p.formatHint}</span>
-      `;
-
-      // Update Endpoint Settings inputs
+      document.getElementById('key-format-hint').innerHTML = `<span>● ${p.formatHint}</span>`;
       document.getElementById('endpoint-url-input').value = p.endpoint;
       document.getElementById('request-method').value = p.method;
       document.getElementById('auth-type-select').value = p.authType;
       document.getElementById('auth-param-name').value = p.authParamName;
 
-      // Expand custom settings automatically if 'custom' is picked
+      // Auto toggle custom inputs if 'custom' picked
       const customParamsBody = document.getElementById('custom-params-body');
       const customParamsArrow = document.getElementById('custom-params-arrow');
       if (providerId === 'custom') {
@@ -750,49 +788,43 @@
       }
 
       updateAuthInputLabels();
+      updateCurlPreview();
     }
 
-    // Adjust Auth Param labels dynamically
     function updateAuthInputLabels() {
       const authType = document.getElementById('auth-type-select').value;
       const paramNameWrapper = document.getElementById('auth-param-name-wrapper');
       const paramLabel = document.getElementById('auth-param-label');
-      const paramInput = document.getElementById('auth-param-name');
 
       if (authType === 'query') {
         paramNameWrapper.style.display = 'block';
-        paramLabel.innerText = 'Query Param Name (उदा. key, api_key)';
+        paramLabel.innerText = 'PARAM NAME';
       } else if (authType === 'bearer') {
         paramNameWrapper.style.display = 'none';
       } else if (authType === 'header_custom') {
         paramNameWrapper.style.display = 'block';
-        paramLabel.innerText = 'Custom Header Name (उदा. x-api-key)';
+        paramLabel.innerText = 'HEADER NAME';
       }
     }
 
-    // Main Validation Function
     async function handleValidateKey() {
       const apiKeyInput = document.getElementById('api-key-input');
       const apiKey = apiKeyInput.value.trim();
 
       if (!apiKey) {
-        showToast('कृपया तपासण्यासाठी API Key प्रविष्ट करा!', 'warning');
+        showToast('Please enter an API key', 'warning');
         apiKeyInput.focus();
         return;
       }
 
       const provider = PROVIDERS[currentProviderId];
-      let endpoint = document.getElementById('endpoint-url-input').value.trim();
+      const endpoint = document.getElementById('endpoint-url-input').value.trim();
       const method = document.getElementById('request-method').value;
       const authType = document.getElementById('auth-type-select').value;
       const authParamName = document.getElementById('auth-param-name').value.trim() || 'key';
       const useProxy = document.getElementById('cors-proxy-toggle').checked;
 
-      // Construct Request URL & Headers
-      const headers = {
-        'Accept': 'application/json'
-      };
-
+      const headers = { 'Accept': 'application/json' };
       let finalUrl = endpoint;
 
       if (authType === 'query') {
@@ -804,50 +836,44 @@
         headers[authParamName] = apiKey;
       }
 
-      // If user toggled CORS Proxy helper
       if (useProxy) {
         finalUrl = `https://corsproxy.io/?url=${encodeURIComponent(finalUrl)}`;
       }
 
-      // Toggle UI States
+      updateCurlPreview();
       setLoadingState(true);
       const startTime = performance.now();
 
       try {
-        const fetchOptions = {
+        const response = await fetch(finalUrl, {
           method: method,
           headers: headers
-        };
+        });
 
-        const response = await fetch(finalUrl, fetchOptions);
         const endTime = performance.now();
         const latencyMs = Math.round(endTime - startTime);
 
-        // Extract Response Headers for inspection
         const headerEntries = [];
         response.headers.forEach((val, key) => {
           headerEntries.push({ key, val });
         });
 
-        // Extract Response Body
         let bodyText = '';
         let parsedJson = null;
         try {
           bodyText = await response.text();
           parsedJson = JSON.parse(bodyText);
         } catch (e) {
-          // not valid json, keep raw text
+          // Keep raw text
         }
 
-        // Process HTTP Status
         processValidationResult({
           status: response.status,
           statusText: response.statusText,
           ok: response.ok,
           latency: latencyMs,
           headers: headerEntries,
-          body: parsedJson ? JSON.stringify(parsedJson, null, 2) : (bodyText || '(Empty Response)'),
-          rawJson: parsedJson,
+          body: parsedJson ? JSON.stringify(parsedJson, null, 2) : (bodyText || '// (Empty response payload)'),
           apiKey: apiKey,
           providerName: provider.name
         });
@@ -855,56 +881,47 @@
       } catch (networkError) {
         const endTime = performance.now();
         const latencyMs = Math.round(endTime - startTime);
-
-        // Network or CORS failure
         processNetworkFailureResult(networkError, latencyMs, apiKey, provider.name);
       } finally {
         setLoadingState(false);
       }
     }
 
-    // Set Loading Indicator
     function setLoadingState(isLoading) {
       const validateBtn = document.getElementById('validate-btn');
       const spinner = document.getElementById('btn-spinner');
-      const btnIcon = document.getElementById('btn-icon');
       const btnLabel = document.getElementById('btn-label');
-
       const emptyState = document.getElementById('status-empty-state');
       const loadingState = document.getElementById('status-loading-state');
       const resultContent = document.getElementById('status-result-content');
 
       if (isLoading) {
         validateBtn.disabled = true;
-        validateBtn.classList.add('opacity-80', 'cursor-not-allowed');
+        validateBtn.classList.add('opacity-75');
         spinner.classList.remove('hidden');
-        btnIcon.classList.add('hidden');
-        btnLabel.innerText = 'तपासणी चालू आहे...';
+        btnLabel.innerText = 'Validating...';
 
         emptyState.classList.add('hidden');
         resultContent.classList.add('hidden');
         loadingState.classList.remove('hidden');
       } else {
         validateBtn.disabled = false;
-        validateBtn.classList.remove('opacity-80', 'cursor-not-allowed');
+        validateBtn.classList.remove('opacity-75');
         spinner.classList.add('hidden');
-        btnIcon.classList.remove('hidden');
-        btnLabel.innerText = 'API Key तपासा (Validate Key)';
+        btnLabel.innerText = 'Validate API Key';
 
         loadingState.classList.add('hidden');
       }
     }
 
-    // Process Detailed Status Code Breakdown
     function processValidationResult(result) {
-      const { status, latency, headers, body, rawJson, apiKey, providerName } = result;
+      const { status, latency, headers, body, apiKey, providerName } = result;
       const resultContent = document.getElementById('status-result-content');
       resultContent.classList.remove('hidden');
 
-      // Update Latency
       document.getElementById('latency-val').innerText = `${latency} ms`;
 
-      // Update Inspector Body & Headers
+      // Update Inspector code view
       currentRawResponse = body;
       document.getElementById('response-body-pre').textContent = body;
       
@@ -912,164 +929,133 @@
       tbody.innerHTML = '';
       currentHeadersString = headers.map(h => `${h.key}: ${h.val}`).join('\n');
 
-      headers.forEach(h => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="py-1 px-2 text-indigo-400 font-semibold align-top break-all">${escapeHtml(h.key)}</td>
-          <td class="py-1 px-2 text-slate-300 align-top break-all">${escapeHtml(h.val)}</td>
-        `;
-        tbody.appendChild(tr);
-      });
+      if (headers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" class="py-2 text-center text-[#464a4d]">No public headers returned</td></tr>';
+      } else {
+        headers.forEach(h => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="py-1 px-2 text-[#3b9eff] align-top break-all">${escapeHtml(h.key)}</td>
+            <td class="py-1 px-2 text-[#fcfdff]/80 align-top break-all">${escapeHtml(h.val)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
 
-      // Extract Rate Limits from Headers
       analyzeRateLimitHeaders(headers);
 
-      // Determine Visual Theme & Marathi Diagnostics
+      // Determine Atmospheric Glow & Status Diagnostics
       let statusCategory = 'unknown';
       let title = '';
-      let badgeClass = '';
-      let bannerBg = '';
-      let iconSvg = '';
+      let pillColor = 'bg-[#464a4d]';
+      let washClass = 'glow-atmospheric';
       let marathiExplanation = '';
       let recommendation = '';
 
       if (status >= 200 && status < 300) {
         statusCategory = 'valid';
         title = 'वैध व कार्यरत API Key (Valid & Active)';
-        badgeClass = 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
-        bannerBg = 'bg-emerald-950/40 border-emerald-800/60';
-        iconSvg = `<div class="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-600/30">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-        </div>`;
-        marathiExplanation = `अभिनंदन! तुमची API Key पूर्णपणे वैध आहे. API सर्व्हरने HTTP ${status} सह विनंती यशस्वीरीत्या स्वीकारली आहे. ही की तुमच्या ऍप्लिकेशन्स किंवा सॉफ्टवेअरमध्ये वापरण्यासाठी पूर्णपणे सुरक्षित आहे.`;
-        recommendation = 'तुम्ही ही की तुमच्या प्रोजेक्टमध्ये बिनधास्त वापरू शकता. सुरक्षेसाठी ही की कधीही पब्लिक GitHub रेपोमध्ये कमिट करू नका.';
+        pillColor = 'bg-[#11ff99]';
+        washClass = 'glow-atmospheric glow-success';
+        marathiExplanation = `अभिनंदन! तुमची API Key पूर्णपणे वैध आहे. API सर्व्हरने HTTP ${status} सह विनंती यशस्वीरीत्या स्वीकारली आहे. ही की तुमच्या सॉफ्टवेअरमध्ये वापरण्यासाठी तयार आहे.`;
+        recommendation = 'ही की तुमच्या ॲपमध्ये वापरू शकता. सुरक्षेसाठी ही की कधीही पब्लिक GitHub रेपोमध्ये कमिट करू नका.';
 
       } else if (status === 401) {
         statusCategory = 'invalid';
-        title = 'अवैध / कालबाह्य API Key (Unauthorized)';
-        badgeClass = 'bg-rose-500/20 text-rose-300 border border-rose-500/40';
-        bannerBg = 'bg-rose-950/40 border-rose-800/60';
-        iconSvg = `<div class="w-12 h-12 rounded-xl bg-rose-600 flex items-center justify-center text-white shadow-lg shadow-rose-600/30">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-        </div>`;
-        marathiExplanation = `ही API Key अवैध (Invalid), चुकीची किंवा Expire झालेली आहे. सर्व्हरने तुमचे प्रमाणीकरण (Authentication) नाकारले आहे.`;
-        recommendation = 'कृपया तुमच्या API डॅशबोर्डवर (उदा. Google AI Studio, OpenAI किंवा GitHub) जाऊन नवीन की तयार करा आणि ती कॉपी करून पुन्हा पेस्ट करा.';
+        title = 'अवैध किंवा कालबाह्य API Key (Unauthorized)';
+        pillColor = 'bg-[#ff2047]';
+        washClass = 'glow-atmospheric glow-error';
+        marathiExplanation = `ही API Key अवैध (Invalid), चुकीची किंवा Expire झालेली आहे. सर्व्हरने तुमचे Authentication नाकारले आहे.`;
+        recommendation = 'कृपया तुमच्या API डॅशबोर्डवर (उदा. Google AI Studio किंवा OpenAI) जाऊन नवीन की तयार करा.';
 
       } else if (status === 403) {
         statusCategory = 'forbidden';
         title = 'परवानगी नाकारली (Forbidden / Scope Error)';
-        badgeClass = 'bg-amber-500/20 text-amber-300 border border-amber-500/40';
-        bannerBg = 'bg-amber-950/40 border-amber-800/60';
-        iconSvg = `<div class="w-12 h-12 rounded-xl bg-amber-600 flex items-center justify-center text-white shadow-lg shadow-amber-600/30">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-        </div>`;
-        marathiExplanation = `की वैध असण्याची शक्यता आहे, परंतु या एंडपॉईंटवर किंवा मॉडेलवर ऍक्सेस करण्याची परवानगी नाही (उदा. Billing सक्रिय नसणे, Scopes नसणे किंवा IP निर्बंध).`;
+        pillColor = 'bg-[#ffc53d]';
+        washClass = 'glow-atmospheric glow-warning';
+        marathiExplanation = `की अस्तित्वात आहे, परंतु या एंडपॉईंटवर किंवा मॉडेलवर ऍक्सेस करण्याची परवानगी नाही (उदा. Billing सक्रिय नसणे किंवा Scopes नसणे).`;
         recommendation = 'तुमच्या API खात्याचे बिलिंग (Payment method) किंवा टोकनचे Scopes/Permissions तपासा.';
 
       } else if (status === 429) {
         statusCategory = 'ratelimit';
-        title = 'रेट लिमिट मर्यादा संपली (Too Many Requests / Quota Exceeded)';
-        badgeClass = 'bg-purple-500/20 text-purple-300 border border-purple-500/40';
-        bannerBg = 'bg-purple-950/40 border-purple-800/60';
-        iconSvg = `<div class="w-12 h-12 rounded-xl bg-purple-600 flex items-center justify-center text-white shadow-lg shadow-purple-600/30">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        </div>`;
-        marathiExplanation = `तुम्ही प्रति मिनिट/तास दिलेल्या मर्यादेपेक्षा जास्त विनंत्या केल्या आहेत किंवा तुमच्या खात्याचा मोफत क्रेडिट कोटा संपला आहे.`;
-        recommendation = 'काही मिनिटे थांबा किंवा तुमच्या API खात्याचा Quota / Subscription प्लॅन अपग्रेड करा.';
+        title = 'रेट लिमिट मर्यादा संपली (Too Many Requests)';
+        pillColor = 'bg-[#ff801f]';
+        washClass = 'glow-atmospheric glow-warning';
+        marathiExplanation = `तुम्ही प्रति मिनिट/तास दिलेल्या मर्यादेपेक्षा जास्त विनंत्या केल्या आहेत किंवा तुमच्या खात्याचा मोफत कोटा संपला आहे.`;
+        recommendation = 'काही मिनिटे थांबा किंवा तुमच्या API खात्याचा Quota / Subscription प्लॅन वाढवा.';
 
       } else if (status >= 500) {
         statusCategory = 'server_error';
-        title = `सर्व्हर त्रुटी (Server-Side Error: ${status})`;
-        badgeClass = 'bg-rose-500/20 text-rose-300 border border-rose-500/40';
-        bannerBg = 'bg-rose-950/40 border-rose-800/60';
-        iconSvg = `<div class="w-12 h-12 rounded-xl bg-rose-700 flex items-center justify-center text-white shadow-lg shadow-rose-700/30">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </div>`;
-        marathiExplanation = `API प्रोव्हायडरच्या स्वतःच्या सर्व्हरवर समस्या (Internal Server Error) आली आहे. यामध्ये तुमच्या की चा दोष नाही. सर्व्हर डाऊन असू शकतो.`;
-        recommendation = 'प्रोव्हायडरचे स्टेटस पेज (उदा. status.openai.com) तपासा आणि थोड्या वेळाने पुन्हा प्रयत्न करा.';
+        title = `सर्व्हर त्रुटी (Server Error: ${status})`;
+        pillColor = 'bg-[#ff2047]';
+        washClass = 'glow-atmospheric glow-error';
+        marathiExplanation = `API प्रोव्हायडरच्या स्वतःच्या सर्व्हरवर समस्या आली आहे. यामध्ये तुमच्या की चा दोष नाही. सर्व्हर तात्पुरता डाऊन असू शकतो.`;
+        recommendation = 'प्रोव्हायडरचे स्टेटस पेज तपासा आणि थोड्या वेळाने पुन्हा प्रयत्न करा.';
 
       } else {
         statusCategory = 'other';
-        title = `अनपेक्षित स्थिती कोड (${status})`;
-        badgeClass = 'bg-slate-500/20 text-slate-300 border border-slate-500/40';
-        bannerBg = 'bg-slate-900 border-slate-800';
-        iconSvg = `<div class="w-12 h-12 rounded-xl bg-slate-700 flex items-center justify-center text-white">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        </div>`;
+        title = `स्थिति कोड: ${status}`;
+        pillColor = 'bg-[#464a4d]';
         marathiExplanation = `सर्व्हरने HTTP ${status} उत्तर दिले आहे. खालील Response JSON तपासून पहा.`;
-        recommendation = 'विनंतीचे पॅरामीटर्स आणि URL बरोबर असल्याची खात्री करा.';
+        recommendation = 'पॅरामीटर्स आणि एंडपॉईंट तपासा.';
       }
 
-      // Apply UI elements
-      const resultBanner = document.getElementById('result-banner');
-      resultBanner.className = `rounded-xl p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${bannerBg}`;
-      
-      const badge = document.getElementById('status-code-badge');
-      badge.className = `font-mono text-xs font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider ${badgeClass}`;
-      badge.innerText = `${status} ${result.statusText || ''}`;
+      // Update atmospheric wash
+      document.getElementById('atmospheric-wash').className = washClass;
 
+      const badge = document.getElementById('status-code-badge');
+      badge.innerText = `${status} ${result.statusText || ''}`;
+      document.getElementById('status-pill-dot').className = `w-2.5 h-2.5 rounded-full ${pillColor}`;
       document.getElementById('status-title-text').innerText = title;
-      document.getElementById('status-icon-box').innerHTML = iconSvg;
       document.getElementById('diagnostic-marathi-explanation').innerText = marathiExplanation;
       document.getElementById('diagnostic-recommendation-text').innerText = recommendation;
 
-      // Save to History Log
       saveToHistory({
         provider: providerName,
         status: status,
         statusCategory: statusCategory,
         latency: latency,
         maskedKey: maskKey(apiKey),
-        timestamp: new Date().toLocaleTimeString('mr-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       });
     }
 
-    // Process Network / CORS Failure
+    // Handle Network / CORS Errors
     function processNetworkFailureResult(error, latency, apiKey, providerName) {
       const resultContent = document.getElementById('status-result-content');
       resultContent.classList.remove('hidden');
 
       document.getElementById('latency-val').innerText = `${latency} ms`;
-      document.getElementById('response-body-pre').textContent = `Error: ${error.message}\n\nNote: If this API restricts browser access, Cross-Origin Resource Sharing (CORS) preflight may fail.`;
+      document.getElementById('response-body-pre').textContent = `// Error: ${error.message}\n// Browser Cross-Origin Resource Sharing (CORS) or connection issue.`;
       
       const tbody = document.getElementById('response-headers-tbody');
-      tbody.innerHTML = '<tr><td colspan="2" class="py-2 text-slate-500 text-center">ब्राउझर नेटवर्क त्रुटीमुळे Headers उपलब्ध नाहीत.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="2" class="py-2 text-[#888e90] text-center font-mono">Headers blocked by browser CORS policy</td></tr>';
 
       document.getElementById('rate-remaining').innerText = 'N/A';
       document.getElementById('rate-limit').innerText = 'N/A';
       document.getElementById('rate-reset').innerText = 'N/A';
 
-      const resultBanner = document.getElementById('result-banner');
-      resultBanner.className = 'rounded-xl p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-indigo-950/40 border-indigo-800/60';
-      
-      const badge = document.getElementById('status-code-badge');
-      badge.className = 'font-mono text-xs font-bold px-2 py-0.5 rounded-md uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/40';
-      badge.innerText = 'CORS / Network Error';
-
+      document.getElementById('atmospheric-wash').className = 'glow-atmospheric glow-warning';
+      document.getElementById('status-code-badge').innerText = 'CORS / Network Error';
+      document.getElementById('status-pill-dot').className = 'w-2.5 h-2.5 rounded-full bg-[#ffc53d]';
       document.getElementById('status-title-text').innerText = 'ब्राउझर CORS किंवा नेटवर्क मर्यादा';
-      document.getElementById('status-icon-box').innerHTML = `
-        <div class="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-        </div>
-      `;
 
       document.getElementById('diagnostic-marathi-explanation').innerText = 
-        'ब्राउझरमधील सुरक्षा नियमांमुळे (CORS Policy) थेट क्लायंटवरून या API ला कॉल करणे ब्लॉक झाले आहे किंवा इंटरनेट जोडणी तुटलेली आहे. काही APIs (उदा. Anthropic किंवा खाजगी सर्व्हर) थेट वेब ब्राउझरमधून कॉलिंगला परवानगी देत नाहीत.';
+        'ब्राउझरमधील सुरक्षा नियमांमुळे (CORS Policy) थेट या API ला कॉल करणे ब्लॉक झाले आहे. Anthropic किंवा काही खाजगी सर्व्हर्स थेट ब्राउझरवरून येणाऱ्या विनंत्या रोखतात.';
 
       document.getElementById('diagnostic-recommendation-text').innerText = 
-        'डाव्या बाजूला "Endpoint आणि विनंती सेटिंग्ज" उघडून "CORS Proxy वापरा" हा चेकबॉक्स ऑन करा आणि पुन्हा चाचणी घ्या.';
+        'डाव्या बाजूला "Request Endpoint & Auth" उघडून "Enable CORS Proxy" हा चेकबॉक्स ऑन करा आणि पुन्हा प्रयत्न करा.';
 
       saveToHistory({
         provider: providerName,
-        status: 'CORS/Net',
+        status: 'CORS',
         statusCategory: 'cors',
         latency: latency,
         maskedKey: maskKey(apiKey),
-        timestamp: new Date().toLocaleTimeString('mr-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       });
     }
 
-    // Rate Limit Header Extractor
     function analyzeRateLimitHeaders(headers) {
       let remaining = 'N/A';
       let limit = 'N/A';
@@ -1085,25 +1071,39 @@
       document.getElementById('rate-remaining').innerText = remaining;
       document.getElementById('rate-limit').innerText = limit;
       document.getElementById('rate-reset').innerText = reset;
-
-      const detectedBadge = document.getElementById('ratelimit-detected-badge');
-      if (remaining !== 'N/A' || limit !== 'N/A') {
-        detectedBadge.innerText = 'Metrics Detected';
-        detectedBadge.className = 'text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
-      } else {
-        detectedBadge.innerText = 'No Rate Headers';
-        detectedBadge.className = 'text-[10px] px-2 py-0.5 rounded font-normal bg-slate-800 text-slate-400';
-      }
     }
 
-    // Helper to mask key for privacy
+    function updateCurlPreview() {
+      const apiKey = document.getElementById('api-key-input').value.trim() || 'YOUR_API_KEY';
+      const endpoint = document.getElementById('endpoint-url-input').value.trim();
+      const method = document.getElementById('request-method').value;
+      const authType = document.getElementById('auth-type-select').value;
+      const authParamName = document.getElementById('auth-param-name').value.trim() || 'key';
+
+      let snippet = `curl -X ${method} "${endpoint}`;
+      if (authType === 'query') {
+        const sep = endpoint.includes('?') ? '&' : '?';
+        snippet += `${sep}${authParamName}=${apiKey}"`;
+      } else {
+        snippet += `" \\\n  -H "Accept: application/json"`;
+        if (authType === 'bearer') {
+          snippet += ` \\\n  -H "Authorization: Bearer ${apiKey}"`;
+        } else if (authType === 'header_custom') {
+          snippet += ` \\\n  -H "${authParamName}: ${apiKey}"`;
+        }
+      }
+
+      currentCurlSnippet = snippet;
+      document.getElementById('curl-preview-pre').textContent = snippet;
+    }
+
+    // Mask API Key for safe storage & history
     function maskKey(key) {
       if (!key) return '';
       if (key.length <= 8) return '****' + key.slice(-2);
       return key.slice(0, 4) + '...' + key.slice(-4);
     }
 
-    // Escape HTML to prevent injection
     function escapeHtml(str) {
       if (!str) return '';
       return String(str)
@@ -1114,159 +1114,158 @@
         .replace(/'/g, '&#039;');
     }
 
-    // Save item to localStorage
+    // Local Storage History Management
     function saveToHistory(item) {
       let history = [];
       try {
-        const stored = localStorage.getItem('api_validator_history');
+        const stored = localStorage.getItem('keyverify_history');
         if (stored) history = JSON.parse(stored);
       } catch (e) {}
 
       history.unshift(item);
-      if (history.length > 20) history = history.slice(0, 20); // Keep max 20
+      if (history.length > 25) history = history.slice(0, 25);
 
       try {
-        localStorage.setItem('api_validator_history', JSON.stringify(history));
+        localStorage.setItem('keyverify_history', JSON.stringify(history));
       } catch (e) {}
 
       updateHistoryCount();
     }
 
-    // Update History Badge Count
     function updateHistoryCount() {
       let count = 0;
       try {
-        const stored = localStorage.getItem('api_validator_history');
+        const stored = localStorage.getItem('keyverify_history');
         if (stored) count = JSON.parse(stored).length;
       } catch (e) {}
       document.getElementById('history-counter-badge').innerText = count;
     }
 
-    // Render History Drawer List
     function renderHistoryList() {
       const container = document.getElementById('history-list');
       container.innerHTML = '';
 
       let history = [];
       try {
-        const stored = localStorage.getItem('api_validator_history');
+        const stored = localStorage.getItem('keyverify_history');
         if (stored) history = JSON.parse(stored);
       } catch (e) {}
 
       if (history.length === 0) {
         container.innerHTML = `
-          <div class="text-center py-10 text-slate-500 text-xs">
-            कोणतीही चाचणी नोंद आढळली नाही.
+          <div class="text-center py-12 text-[#464a4d] text-xs font-mono">
+            No test entries logged yet.
           </div>
         `;
         return;
       }
 
-      history.forEach((h, idx) => {
+      history.forEach(h => {
         const item = document.createElement('div');
-        item.className = 'p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs flex items-center justify-between gap-3';
+        item.className = 'p-3 rounded-[8px] bg-[#06060a] border border-[rgba(255,255,255,0.06)] text-xs font-mono flex items-center justify-between gap-3';
         
-        const badgeColors = {
-          valid: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-          invalid: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
-          forbidden: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-          ratelimit: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-          server_error: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
-          cors: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30'
-        };
-
-        const badgeClass = badgeColors[h.statusCategory] || 'bg-slate-800 text-slate-300';
+        let statusDotColor = 'bg-[#464a4d]';
+        if (h.statusCategory === 'valid') statusDotColor = 'bg-[#11ff99]';
+        else if (h.statusCategory === 'invalid' || h.statusCategory === 'server_error') statusDotColor = 'bg-[#ff2047]';
+        else if (h.statusCategory === 'forbidden' || h.statusCategory === 'ratelimit' || h.statusCategory === 'cors') statusDotColor = 'bg-[#ffc53d]';
 
         item.innerHTML = `
           <div class="min-w-0">
             <div class="flex items-center gap-2">
-              <span class="font-bold text-white truncate">${escapeHtml(h.provider)}</span>
-              <span class="font-mono text-[10px] px-1.5 py-0.5 rounded border ${badgeClass}">
-                ${h.status}
-              </span>
+              <span class="w-1.5 h-1.5 rounded-full ${statusDotColor}"></span>
+              <span class="font-medium text-[#fcfdff] truncate">${escapeHtml(h.provider)}</span>
+              <span class="text-[10px] text-[#888e90] border border-[rgba(255,255,255,0.06)] px-1 rounded">${h.status}</span>
             </div>
-            <div class="text-[11px] font-mono text-slate-400 mt-1 truncate">
-              Key: ${escapeHtml(h.maskedKey)} &bull; ${h.latency}ms
+            <div class="text-[11px] text-[#464a4d] mt-1 truncate">
+              ${escapeHtml(h.maskedKey)} &bull; ${h.latency}ms
             </div>
           </div>
-          <span class="text-[10px] text-slate-500 flex-shrink-0 font-mono">${h.timestamp}</span>
+          <span class="text-[10px] text-[#464a4d] flex-shrink-0">${h.timestamp}</span>
         `;
         container.appendChild(item);
       });
     }
 
-    // Switch Inspector Tab
     function switchInspectorTab(tab) {
       activeInspectorTab = tab;
       const tabResponse = document.getElementById('inspector-tab-response');
       const tabHeaders = document.getElementById('inspector-tab-headers');
+      const tabCurl = document.getElementById('inspector-tab-curl');
+
       const btnResponse = document.getElementById('tab-btn-response');
       const btnHeaders = document.getElementById('tab-btn-headers');
+      const btnCurl = document.getElementById('tab-btn-curl');
+
+      [tabResponse, tabHeaders, tabCurl].forEach(el => el.classList.add('hidden'));
+      [btnResponse, btnHeaders, btnCurl].forEach(b => {
+        b.className = 'px-2.5 py-1 text-xs font-mono rounded-[6px] text-[#888e90] hover:text-[#fcfdff] transition';
+      });
+
+      const activeBtnClass = 'px-2.5 py-1 text-xs font-mono rounded-[6px] text-[#fcfdff] bg-[#101012] border border-[rgba(255,255,255,0.14)]';
 
       if (tab === 'response') {
         tabResponse.classList.remove('hidden');
-        tabHeaders.classList.add('hidden');
-        btnResponse.className = 'px-3 py-2 text-xs font-medium border-b-2 border-indigo-500 text-indigo-400 transition';
-        btnHeaders.className = 'px-3 py-2 text-xs font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition';
-      } else {
-        tabResponse.classList.add('hidden');
+        btnResponse.className = activeBtnClass;
+      } else if (tab === 'headers') {
         tabHeaders.classList.remove('hidden');
-        btnHeaders.className = 'px-3 py-2 text-xs font-medium border-b-2 border-indigo-500 text-indigo-400 transition';
-        btnResponse.className = 'px-3 py-2 text-xs font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition';
+        btnHeaders.className = activeBtnClass;
+      } else if (tab === 'curl') {
+        tabCurl.classList.remove('hidden');
+        btnCurl.className = activeBtnClass;
       }
     }
 
-    // Copy Content of Current Active Tab
     function copyCurrentTabContent() {
       if (activeInspectorTab === 'response') {
         if (!currentRawResponse) {
-          showToast('कॉपी करण्यासाठी डेटा नाही', 'warning');
+          showToast('No response content to copy', 'warning');
           return;
         }
-        copyTextToClipboard(currentRawResponse, 'JSON Response कॉपी केले!');
-      } else {
+        copyTextToClipboard(currentRawResponse, 'Response JSON copied');
+      } else if (activeInspectorTab === 'headers') {
         if (!currentHeadersString) {
-          showToast('कॉपी करण्यासाठी Headers नाहीत', 'warning');
+          showToast('No headers to copy', 'warning');
           return;
         }
-        copyTextToClipboard(currentHeadersString, 'Headers कॉपी केले!');
+        copyTextToClipboard(currentHeadersString, 'Headers copied');
+      } else if (activeInspectorTab === 'curl') {
+        copyTextToClipboard(currentCurlSnippet, 'cURL command copied');
       }
     }
 
-    // Event Listeners setup
     window.addEventListener('DOMContentLoaded', () => {
       renderProviderButtons();
       selectProvider('gemini');
       updateHistoryCount();
+      updateCurlPreview();
 
       const apiKeyInput = document.getElementById('api-key-input');
       const clearBtn = document.getElementById('clear-input-btn');
       const eyeToggle = document.getElementById('toggle-key-visibility');
 
-      // Key input change
       apiKeyInput.addEventListener('input', () => {
         if (apiKeyInput.value.length > 0) {
           clearBtn.classList.remove('hidden');
         } else {
           clearBtn.classList.add('hidden');
         }
+        updateCurlPreview();
       });
 
-      // Clear input button
       clearBtn.addEventListener('click', () => {
         apiKeyInput.value = '';
         clearBtn.classList.add('hidden');
         apiKeyInput.focus();
+        updateCurlPreview();
       });
 
-      // Toggle show/hide password
       eyeToggle.addEventListener('click', () => {
         isKeyVisible = !isKeyVisible;
         apiKeyInput.type = isKeyVisible ? 'text' : 'password';
-        document.getElementById('eye-text').innerText = isKeyVisible ? 'लपवा (Hide)' : 'दाखवा (Show)';
+        document.getElementById('eye-text').innerText = isKeyVisible ? 'Hide' : 'Show';
       });
 
-      // Toggle custom settings panel
+      // Toggle custom parameters drawer
       const customParamsBtn = document.getElementById('toggle-custom-params-btn');
       const customParamsBody = document.getElementById('custom-params-body');
       const customParamsArrow = document.getElementById('custom-params-arrow');
@@ -1281,19 +1280,26 @@
         }
       });
 
-      // Auth type change listener
-      document.getElementById('auth-type-select').addEventListener('change', updateAuthInputLabels);
+      document.getElementById('auth-type-select').addEventListener('change', () => {
+        updateAuthInputLabels();
+        updateCurlPreview();
+      });
 
-      // Reset form
+      document.getElementById('endpoint-url-input').addEventListener('input', updateCurlPreview);
+      document.getElementById('request-method').addEventListener('change', updateCurlPreview);
+
+      // Reset
       document.getElementById('reset-form-btn').addEventListener('click', () => {
         apiKeyInput.value = '';
         clearBtn.classList.add('hidden');
         document.getElementById('status-result-content').classList.add('hidden');
         document.getElementById('status-empty-state').classList.remove('hidden');
-        showToast('फॉर्म पूर्ववत केला गेला.', 'info');
+        document.getElementById('atmospheric-wash').className = 'glow-atmospheric';
+        updateCurlPreview();
+        showToast('Form reset', 'info');
       });
 
-      // History Drawer Open / Close
+      // History Drawer
       const historyModal = document.getElementById('history-modal');
       document.getElementById('open-history-btn').addEventListener('click', () => {
         renderHistoryList();
@@ -1309,13 +1315,12 @@
       document.getElementById('close-history-btn').addEventListener('click', closeHistory);
       document.getElementById('history-done-btn').addEventListener('click', closeHistory);
 
-      // Clear all history with modal confirmation
       document.getElementById('clear-all-history-btn').addEventListener('click', () => {
-        openConfirmModal('इतिहास हटवा', 'तुम्हाला सर्व चाचणी इतिहास पूर्णपणे हटवायचा आहे का?', () => {
-          localStorage.removeItem('api_validator_history');
+        openConfirmModal('Clear History', 'Are you sure you want to delete all validation logs?', () => {
+          localStorage.removeItem('keyverify_history');
           renderHistoryList();
           updateHistoryCount();
-          showToast('सर्व इतिहास हटवला गेला.', 'success');
+          showToast('History cleared', 'success');
         });
       });
     });
